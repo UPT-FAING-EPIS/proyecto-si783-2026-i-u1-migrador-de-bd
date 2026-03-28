@@ -10,35 +10,35 @@
 
 **Escuela Profesional de Ingeniería de Sistemas**
 
-**Proyecto *{Nombre de Proyecto}***
+**Proyecto *Migrador de DB***
 
-Curso: *{Nombre de Asignatura}*
+Curso: *Base de Datos II*
 
-Docente: *{Nombre de Docente}*
+Docente: *Mag. Patrick Cuadros Quiroga*
 
 Integrantes:
 
-***{Apellidos y nombres del estudiante (código universitario)}***
+***Halanocca Rojas, Usher Damiron (2023076795)***
 
 **Tacna – Perú**
 
-***{Año}***
+***2026***
 
 **  
 **
 </center>
 <div style="page-break-after: always; visibility: hidden">\pagebreak</div>
 
-Sistema *{Nombre del Sistema}*
+Sistema *DBMigrator*
 
 Informe de Factibilidad
 
-Versión *{1.0}*
+Versión *1.0*
 
 |CONTROL DE VERSIONES||||||
 | :-: | :- | :- | :- | :- | :- |
 |Versión|Hecha por|Revisada por|Aprobada por|Fecha|Motivo|
-|1\.0|MPV|ELV|ARV|10/10/2020|Versión Original|
+|1\.0|MPV|ELV|ARV|10/10/2026|Versión Original|
 
 <div style="page-break-after: always; visibility: hidden">\pagebreak</div>
 
@@ -76,18 +76,26 @@ Versión *{1.0}*
 1. <span id="_Toc52661346" class="anchor"></span>**Descripción del Proyecto**
 
     1.1. Nombre del proyecto
-
+         Sistema DBMigrator: Sistema de Migración de Bases de Datos Heterogéneas
     1.2. Duración del proyecto
-
+         El proyecto tendrá una duración estimada de 4 meses, comprendiendo las fases de análisis, diseño, desarrollo, pruebas e implementación.
     1.3. Descripción
 
-        En que consiste el proyecto/importancia del mismo, contexto en que se va desenvolver
+        El presente proyecto consiste en el desarrollo de un sistema capaz de migrar bases de datos entre diferentes gestores, tales como MySQL, Oracle y SQL Server.
+        La necesidad de este sistema surge debido a que muchas organizaciones trabajan con múltiples sistemas de gestión de bases de datos, lo que dificulta la interoperabilidad, la migración de información y la                   modernización tecnológica.
+        El sistema permitirá convertir estructuras (tablas, relaciones, tipos de datos) y datos de un motor de base de datos a otro, garantizando integridad, compatibilidad y eficiencia en el proceso.
+        Este proyecto se desenvolverá en el contexto de la gestión de datos empresariales, facilitando la transición entre tecnologías y reduciendo el esfuerzo manual requerido en procesos de migración.
 
     1.4. Objetivos
 
         1.4.1 Objetivo general
+           Desarrollar un sistema que permita la migración eficiente y segura de bases de datos entre diferentes gestores, garantizando la integridad y consistencia de la información.
         1.4.2 Objetivos Específicos
-            Para cada objetivo específico se indicara que se va a lograr
+            Analizar las diferencias estructurales entre los sistemas gestores de bases de datos (MySQL, Oracle, SQL Server).
+            Diseñar un módulo de conversión de estructuras de base de datos.
+            Implementar la transferencia de datos entre distintos motores de bases de datos.
+            Validar la integridad de los datos migrados.
+            Desarrollar una interfaz que facilite el uso del sistema por parte del usuario.
 
 <div style="page-break-after: always; visibility: hidden">\pagebreak</div>
 
