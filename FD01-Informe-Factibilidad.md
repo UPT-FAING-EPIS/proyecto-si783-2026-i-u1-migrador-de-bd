@@ -39,7 +39,7 @@ Versión *1.0*
 | CONTROL DE VERSIONES | | | | |
 | :--- | :--- | :--- | :--- | :--- |
 | **Versión** | **Hecha por** | **Revisada por** | **Aprobada por** | **Fecha** | **Motivo** |
-| 1.0 | Halanocca Rojas, U. / LLica Mamani, J. | ELV | ARV | 10/10/2026 | Versión Original |
+| 1.0 | Halanocca Rojas, Usher Damiron / LLica Mamani, Jimmy Mijair | Halanocca Rojas, Usher Damiron | LLica Mamani, Jimmy Mijair | 05/04/2026 | Versión Original |
 
 <div style="page-break-after: always; visibility: hidden">\pagebreak</div>
 
@@ -168,28 +168,28 @@ Este proyecto nace para proporcionar una solución automatizada, confiable y ext
 
 | # | Título | Descripción | Etiquetas | Dependencias |
 |---|--------|-------------|----------|--------------|
-| **Fase 1: Setup y Conectividad (Días 1-3)** |
+| **Fase 1: Setup y Conectividad** |
 | 1 | Estructura base del proyecto | Crear estructura de carpetas, archivos iniciales, requirements.txt, y configuración inicial de logging. | `core-extract`, `documentation` | — |
 | 2 | Configuración de conexión a BD origen (SQLAlchemy) | Implementar clase `DatabaseConnector` con soporte para múltiples motores (PostgreSQL, MySQL, SQL Server). Usar YAML para credenciales. | `core-extract` | #1 |
 | 3 | Configuración de conexión a BD destino | Similar a #2, pero para el destino. Incluir pool de conexiones y timeouts. | `core-extract` | #1 |
 | 4 | Sistema de logging estructurado | Configurar `structlog` o `logging` con JSON para trazabilidad. Incluir nivel de detalle por módulo. | `core-extract`, `documentation` | #1 |
 | 5 | Definición de esquemas de transformación (Pydantic) | Crear modelos Pydantic para datos origen y destino. Validación de tipos y campos obligatorios. | `transform-load` | #1 |
-| **Fase 2: Extracción y Control de Estado (Días 4-6)** |
+| **Fase 2: Extracción y Control de Estado** |
 | 6 | Extractor con manejo de lotes | Crear clase `BatchExtractor` que extraiga datos en lotes configurables. Debe soportar consultas SQL personalizadas. | `core-extract` | #2 |
 | 7 | Sistema de checkpoint | Guardar estado de extracción (último ID, timestamp, lote) en tabla de control o archivo. | `core-extract` | #6 |
 | 8 | Mecanismo de reanudación | Implementar lógica para reanudar desde el último checkpoint en caso de interrupción. | `core-extract` | #7 |
 | 9 | Manejo de errores en extracción | Capturar excepciones de red/BD, reintentos con backoff, y registrar errores sin detener todo el proceso. | `core-extract`, `bug` | #6 |
 | 10 | Utilidades de validación y sanitización | Funciones para validar tipos básicos, sanitizar strings, y verificar integridad de datos antes de pasar a transformación. | `core-extract` | #6 |
-| **Fase 3: Transformación y Mapeo (Días 7-10)** |
+| **Fase 3: Transformación y Mapeo** |
 | 11 | Motor de mapeo de campos | Implementar `FieldMapper` que permita definir mapeos campo a campo con transformaciones simples (renombrar, concatenar, etc.). | `transform-load` | #5 |
 | 12 | Transformaciones complejas con Pandas | Crear módulo `ComplexTransformer` para operaciones como agregaciones, joins, limpieza de datos y normalización. | `transform-load` | #11 |
 | 13 | Reglas de negocio personalizables | Permitir inyectar funciones de transformación definidas por el usuario. Ejemplo: cálculos de impuestos, formato de fechas. | `transform-load`, `enhancement` | #12 |
-| **Fase 4: Carga Optimizada y Validación (Días 11-14)** |
+| **Fase 4: Carga Optimizada y Validación** |
 | 14 | Estrategia de bulk insert | Implementar carga masiva usando `executemany` o métodos nativos del driver. Configurar tamaño de lote. | `transform-load` | #3, #13 |
 | 15 | Soporte para upsert | Lógica de actualización si existe, inserción si no. Usar cláusulas específicas según motor (ON CONFLICT, MERGE). | `transform-load` | #14 |
 | 16 | Optimización de queries de carga | Revisar índices, evitar bloqueos largos, usar transacciones por lotes. | `transform-load`, `enhancement` | #14 |
 | 17 | Validación post-migración | Comparar conteos de registros origen vs destino, verificar integridad referencial, y generar diferencias. | `transform-load`, `high-priority` | #15 |
-| **Fase 5: Integración, Reportes y Cierre (Días 15-16)** |
+| **Fase 5: Integración, Reportes y Cierre** |
 | 18 | Pipeline orquestador | Script principal que ejecuta extracción → transformación → carga en secuencia, respetando checkpoints. | `core-extract`, `transform-load` | #8, #15 |
 | 19 | Generación de reporte de migración | Crear reporte HTML/JSON con métricas: filas extraídas, transformadas, cargadas, errores, tiempo total. | `documentation` | #9, #17 |
 | 20 | Pruebas de integración end-to-end | Probar con datos reales (muestra pequeña) y validar que el pipeline completo funcione correctamente. | `bug`, `high-priority` | #18 |
@@ -207,11 +207,10 @@ Son los gastos de oficina y materiales de consumo durante el desarrollo.
 
 | Concepto | Unidad | Cantidad | Costo Unitario (S/.) | Costo Total (S/.) |
 | :--- | :--- | :--- | :--- | :--- |
-| Papel Bond A4 (millar) | Millar | 1 | 30.00 | 30.00 |
-| Lapiceros | Unidad | 5 | 1.50 | 7.50 |
-| Cuaderno de apuntes | Unidad | 2 | 8.00 | 16.00 |
-| Impresiones (estimado) | Unidad | 100 | 0.50 | 50.00 |
-| **Total** | | | | **S/ 103.50** |
+| Lapiceros | Unidad | 2 | 1.50 | 3.00 |
+| Cuaderno de apuntes | Unidad | 1 | 4.00 | 4.00 |
+| Impresiones (estimado) | Unidad | 20 | 0.50 | 10.00 |
+| **Total** | | | | **S/ 17.00** |
 
 **4.2.2. Costos operativos durante el desarrollo**
 
@@ -219,9 +218,9 @@ Costos asociados al uso de servicios durante el periodo de desarrollo (4 meses).
 
 | Concepto | Unidad | Cantidad (meses) | Costo Unitario (S/./mes) | Costo Total (S/.) |
 | :--- | :--- | :--- | :--- | :--- |
-| Energía Eléctrica (estimado) | Mes | 4 | 100.00 | 400.00 |
+| Energía Eléctrica (estimado) | Mes | 4 | 50.00 | 200.00 |
 | Internet Banda Ancha | Mes | 4 | 80.00 | 320.00 |
-| **Total** | | | | **S/ 720.00** |
+| **Total** | | | | **S/ 520.00** |
 
 **4.2.3. Costos del ambiente**
 
@@ -247,13 +246,13 @@ Este proyecto será desarrollado por los dos integrantes del equipo como parte d
 
 | Concepto | Costo (S/.) |
 | :--- | :--- |
-| Costos Generales | 103.50 |
-| Costos Operativos | 720.00 |
+| Costos Generales | 17.00 |
+| Costos Operativos | 520.00 |
 | Costos del Ambiente | 0.00 |
 | Costos de Personal (Costo de Oportunidad) | 5120.00 |
-| **Costo Total del Proyecto** | **S/ 5943.50** |
+| **Costo Total del Proyecto** | **S/ 5657.00** |
 
-La inversión total estimada para el desarrollo del proyecto asciende a **S/ 5943.50**. Este costo es considerado bajo para un sistema de esta naturaleza. La inversión será asumida por los desarrolladores como parte de su formación.
+La inversión total estimada para el desarrollo del proyecto asciende a **S/ 5657.00**. Este costo es considerado bajo para un sistema de esta naturaleza. La inversión será asumida por los desarrolladores como parte de su formación.
 
 ### **4.3. Factibilidad Operativa**
 
@@ -315,9 +314,9 @@ El proyecto es ambientalmente factible y tiene un impacto positivo.
 
 | Año | 0 | 1 | 2 | 3 |
 | :--- | :--- | :--- | :--- | :--- |
-| **Inversión Inicial** | -S/ 5,943.50 | | | |
+| **Inversión Inicial** | -S/ 5,657.00 | | | |
 | **Ahorros (Beneficios)** | | S/ 7,200.00 | S/ 7,200.00 | S/ 7,200.00 |
-| **Flujo de Caja Neto** | **-S/ 5,943.50** | **S/ 7,200.00** | **S/ 7,200.00** | **S/ 7,200.00** |
+| **Flujo de Caja Neto** | **-S/ 5,657.00** | **S/ 7,200.00** | **S/ 7,200.00** | **S/ 7,200.00** |
 
 **5.1.2.1. Relación Beneficio/Costo (B/C)**
 
@@ -329,9 +328,9 @@ VPB = 7200 / 1.10 + 7200 / 1.21 + 7200 / 1.331
 
 VPB = 6545.45 + 5950.41 + 5409.46 = S/ 17,905.32
 
-VPC = S/ 5,943.50
+VPC = S/ 5,657.00
 
-B/C = VPB / VPC = 17,905.32 / 5,943.50 = **3.01**
+B/C = VPB / VPC = 17,905.32 / 5,657.00 = **3.16**
 
 **Conclusión:** El índice B/C es 3.01, el cual es mayor a 1. Por lo tanto, el proyecto es económicamente viable y se acepta.
 
@@ -339,19 +338,19 @@ B/C = VPB / VPC = 17,905.32 / 5,943.50 = **3.01**
 
 VAN = -Inversión Inicial + VPB
 
-VAN = -5,943.50 + 17,905.32 = **S/ 11,961.82**
+VAN = -5,657.00 + 17,905.32 = **S/ 12,248.32**
 
-**Conclusión:** El VAN es positivo (S/ 11,961.82), lo que indica que el proyecto generará un valor neto superior a la inversión realizada, por lo que se acepta.
+**Conclusión:** El VAN es positivo (S/ 12,248.32), lo que indica que el proyecto generará un valor neto superior a la inversión realizada, por lo que se acepta.
 
 **5.1.2.3. Tasa Interna de Retorno (TIR)**
 
 La TIR es la tasa de descuento que hace que el VAN sea igual a cero.
 
--5,943.50 + 7200/(1+TIR)^1 + 7200/(1+TIR)^2 + 7200/(1+TIR)^3 = 0
+-5,657.00 + 7200/(1+TIR)^1 + 7200/(1+TIR)^2 + 7200/(1+TIR)^3 = 0
 
-Calculando la TIR, obtenemos un valor aproximado del **110%**.
+Calculando la TIR, obtenemos un valor aproximado del **114.5%**.
 
-**Conclusión:** La TIR (110%) es significativamente mayor que el COK (10%). Esto demuestra que el proyecto es altamente rentable, ya que el retorno de la inversión es muy superior al costo de oportunidad del capital.
+**Conclusión:** La TIR (114.5%) es significativamente mayor que el COK (14.5%). Esto demuestra que el proyecto es altamente rentable, ya que el retorno de la inversión es muy superior al costo de oportunidad del capital.
 
 <div style="page-break-after: always; visibility: hidden">\pagebreak</div>
 
@@ -361,7 +360,7 @@ Tras realizar el estudio de factibilidad para el Sistema DBMigrator, se presenta
 
 1. **Viabilidad Técnica:** El proyecto es técnicamente viable. Existe un ecosistema de software maduro y de código abierto (Python, SQLAlchemy, pandas) que permite su desarrollo. El plan de trabajo estructurado en 21 issues garantiza un desarrollo ordenado, secuencial y medible, minimizando los riesgos técnicos.
 
-2. **Viabilidad Económica y Financiera:** La inversión total estimada es de S/ 5,943.50. Los indicadores financieros calculados (B/C de 3.01, VAN positivo de S/ 11,961.82 y una TIR del 110%) demuestran de manera concluyente que el proyecto es altamente rentable y generará un retorno de la inversión muy superior a cualquier costo de oportunidad, justificando plenamente su ejecución.
+2. **Viabilidad Económica y Financiera:** La inversión total estimada es de S/ 5657.00. Los indicadores financieros calculados (B/C de 3.16, VAN positivo de S/ 12,248.32 y una TIR del 114.5%) demuestran de manera concluyente que el proyecto es altamente rentable y generará un retorno de la inversión muy superior a cualquier costo de oportunidad, justificando plenamente su ejecución.
 
 3. **Viabilidad Operativa:** El sistema generará beneficios tangibles (ahorro de tiempo y reducción de errores) e intangibles (disponibilidad de personal, modernización tecnológica). La arquitectura modular y la documentación garantizarán su operatividad y mantenibilidad por parte de los usuarios finales.
 
