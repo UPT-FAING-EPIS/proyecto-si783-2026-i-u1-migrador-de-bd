@@ -10,7 +10,7 @@
 
 **Escuela Profesional de Ingeniería de Sistemas**
 
-**Proyecto *Sistema DBMigrator: Sistema de Migración de Bases de Datos Heterogéneas***
+**Proyecto *Migrador de DB***
 
 Curso: *Base de Datos II*
 
@@ -19,7 +19,7 @@ Docente: *MAG. Patrick Cuadros Quiroga*
 Integrantes:
 
 ***Halanocca Rojas, Usher Damiron (2023076795)*  
-*LLica Mamani, Jimmy Mijair (2023076795)***
+*LLica Mamani, Jimmy Mijair (2023076789)***
 
 **Tacna – Perú**
 
@@ -29,17 +29,6 @@ Integrantes:
 **
 </center>
 <div style="page-break-after: always; visibility: hidden">\pagebreak</div>
-
-|CONTROL DE VERSIONES||||||
-| :-: | :- | :- | :- | :- | :- |
-|Versión|Hecha por|Revisada por|Aprobada por|Fecha|Motivo|
-|1\.0|MPV|ELV|ARV|04/04/2026|Versión Original|
-
-
-
-
-
-
 
 
 
@@ -55,10 +44,10 @@ Integrantes:
 
 <div style="page-break-after: always; visibility: hidden">\pagebreak</div>
 
-|CONTROL DE VERSIONES||||||
-| :-: | :- | :- | :- | :- | :- |
-|Versión|Hecha por|Revisada por|Aprobada por|Fecha|Motivo|
-|1\.0|MPV|ELV|ARV|04/04/2026|Versión Original|
+| CONTROL DE VERSIONES | | | | |
+| :--- | :--- | :--- | :--- | :--- |
+| **Versión** | **Hecha por** | **Revisada por** | **Aprobada por** | **Fecha** | **Motivo** |
+| 1.0 | Halanocca Rojas, Usher Damiron / LLica Mamani, Jimmy Mijair | Halanocca Rojas, Usher Damiron | LLica Mamani, Jimmy Mijair | 05/04/2026 | Versión Original |
 
 
 <div style="page-break-after: always; visibility: hidden">\pagebreak</div>
