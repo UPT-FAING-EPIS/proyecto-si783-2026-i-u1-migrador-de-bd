@@ -1,34 +1,70 @@
-version: 1
-disable_existing_loggers: false
+bases_datos_soportadas:
+  - MySQL
+  - Oracle
+  - Microsoft SQL Server
+  - PostgreSQL
+  - Apache Cassandra
+  - CockroachDB
+  - Nuob DB
+  - Yugabyte DB
+  - ZODB
+  - ObjectDB
+  - Cache
+  - db4o
+  - MongoDB
+  - Apache CouchDB
+  - MarkLogic
+  - Elasticsearch
+  - Cosmos DB
+  - Redis
+  - Amazon DynamoDB
+  - BoltDB
+  - Aerospike
 
-formateadores:
-  json:
-    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    class: pythonjsonlogger.jsonlogger.JsonFormatter
-  consola:
-    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+configuracion_conexion:
+  origen:
+    motor: PostgreSQL
+    host: localhost
+    puerto: 5432
+    nombre_bd: bd_origen
+    usuario: usuario_origen
+    contrasena: ${BD_ORIGEN_PASSWORD}
+    pool_tamano: 5
+    timeout_conexion: 30
+    
+  destino:
+    motor: PostgreSQL
+    host: localhost
+    puerto: 5432
+    nombre_bd: bd_destino
+    usuario: usuario_destino
+    contrasena: ${BD_DESTINO_PASSWORD}
+    pool_tamano: 10
+    timeout_conexion: 30
 
-manejadores:
-  consola:
-    class: logging.StreamHandler
-    level: INFO
-    formatter: consola
-    stream: ext://sys.stdout
-  
-  archivo_json:
-    class: logging.handlers.RotatingFileHandler
-    level: DEBUG
-    formatter: json
-    filename: logs/migracion.log
-    maxBytes: 10485760
-    backupCount: 5
+configuracion_extraccion:
+  tamano_lote: 1000
+  consulta_sql: "SELECT * FROM tabla_origen"
+  reintentos_maximos: 3
+  tiempo_espera_reintento: 5
 
-loggers:
-  src:
-    level: DEBUG
-    handlers: [consola, archivo_json]
-    propagate: false
+configuracion_transformacion:
+  reglas_negocio:
+    activas: false
+    ruta_script: "transformaciones_personalizadas.py"
 
-root:
-  level: INFO
-  handlers: [consola, archivo_json]
+configuracion_carga:
+  tamano_lote_carga: 500
+  usar_upsert: true
+  validar_post_carga: true
+
+configuracion_punto_control:
+  tipo_almacenamiento: archivo
+  archivo_estado: "punto_control.json"
+  tabla_control: "control_migracion"
+
+configuracion_logging:
+  nivel: INFO
+  formato: "json"
+  archivo_log: "migracion.log"
+  rotacion: "diaria"

@@ -1,25 +1,15 @@
-# Dependencias principales
-sqlalchemy>=2.0.0
-pandas>=2.0.0
-pydantic>=2.0.0
-pydantic-settings>=2.0.0
-structlog>=24.0.0
-python-dotenv>=1.0.0
-pyyaml>=6.0
-
-# Drivers de bases de datos (todos soportados)
-psycopg2-binary>=2.9.0    # PostgreSQL
-pymysql>=1.0.0             # MySQL
-pyodbc>=5.0.0              # SQL Server
-
-# Utilidades
-tenacity>=8.0.0
-click>=8.0.0
-tqdm>=4.65.0
-
-# Pruebas
-pytest>=7.0.0
-pytest-cov>=4.0.0
-
-# Reportes
-jinja2>=3.0.0
+sqlalchemy==2.0.23
+pandas==2.1.3
+pydantic==2.5.0
+pyyaml==6.0.1
+structlog==23.2.0
+python-dotenv==1.0.0
+jinja2==3.1.2
+plotly==5.18.0
+psycopg2-binary==2.9.9
+mysql-connector-python==8.2.0
+pymssql==2.2.10
+redis==5.0.1
+elasticsearch==8.11.0
+pymongo==4.6.1
+cassandra-driver==3.29.0
