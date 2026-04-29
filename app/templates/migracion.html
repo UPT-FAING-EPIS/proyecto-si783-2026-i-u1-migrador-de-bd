@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block titulo %}MigradorBD{% endblock %}
+
+{% block contenido %}
+<h2>Sistema de Migracion de Bases de Datos</h2>
+
+<div class="panel-conexiones">
+    <!-- ORIGEN -->
+    <div class="conexion-panel">
+        <h3>PASO 1: Subir Base de Datos Origen</h3>
+        <p style="color:#666; font-size:13px;">
+            Formatos soportados: .db, .sqlite, .sqlite3, .sql, .dump, .bak, .dmp, .json, .csv, .xlsx
+        </p>
+        
+        <input type="file" id="archivo-input" 
+               accept=".db,.sqlite,.sqlite3,.sql,.dump,.bak,.dmp,.json,.bson,.csv,.xlsx,.xls,.rdb,.cql"
+               onchange="subirArchivo()" style="display:none;">
+        
+        <div class="zona-subida" id="zona-subida" onclick="document.getElementById('archivo-input').click()">
+            <div style="font-size:40px;">[ Subir Archivo ]</div>
+            <p>Click para seleccionar</p>
+        </div>
+        
+        <div id="info-origen" style="display:none; margin-top:15px;"></div>
+    </div>
+    
+    <!-- DESTINO -->
+    <div class="conexion-panel">
+        <h3>PASO 2: Seleccionar Destino</h3>
+        
+        <select id="motor-destino" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:4px; font-size:14px;">
+            <option value="">Seleccionar motor destino...</option>
+            <option value="SQLite">SQLite</option>
+            <option value="PostgreSQL">PostgreSQL</option>
+            <option value="MySQL">MySQL</option>
+            <option value="Microsoft SQL Server">Microsoft SQL Server</option>
+            <option value="Oracle">Oracle</option>
+            <option value="MongoDB">MongoDB</option>
+            <option value="Redis">Redis</option>
+            <option value="Elasticsearch">Elasticsearch</option>
+            <option value="Apache Cassandra">Apache Cassandra</option>
+        </select>
+        
+        <button onclick="configurarDestino()" style="margin-top:15px; padding:10px 20px; background:#4CAF50; color:white; border:none; border-radius:4px; cursor:pointer; width:100%;">
+            Configurar Destino
+        </button>
+        <span id="destino-estado" style="display:block; margin-top:10px; font-weight:bold;"></span>
+    </div>
+</div>
+
+<!-- PASO 3: MIGRACION -->
+<div style="background:white; padding:25px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-top:20px;">
+    <h3>PASO 3: Ejecutar Migracion</h3>
+    
+    <div class="metricas">
+        <div class="metrica exito">
+            <span id="stat-tablas">0</span>
+            <small>Tablas</small>
+        </div>
+        <div class="metrica info">
+            <span id="stat-extraidos">0</span>
+            <small>Extraidos</small>
+        </div>
+        <div class="metrica warning">
+            <span id="stat-cargados">0</span>
+            <small>Cargados</small>
+        </div>
+        <div class="metrica error">
+            <span id="stat-errores">0</span>
+            <small>Errores</small>
+        </div>
+    </div>
+    
+    <p id="tabla-actual" style="color:#666; margin:10px 0;">Listo para iniciar</p>
+    
+    <div style="background:#e0e0e0; height:25px; border-radius:12px; overflow:hidden; margin:10px 0;">
+        <div id="barra" style="width:0%; height:100%; background:#4CAF50; transition:width 0.3s;"></div>
+    </div>
+    <p id="porcentaje" style="font-size:28px; text-align:center; color:#1a73e8;">0%</p>
+    
+    <div style="margin:15px 0;">
+        <button onclick="iniciarMigracion()" id="btn-iniciar" style="padding:12px 30px; background:#4CAF50; color:white; border:none; border-radius:4px; font-size:16px; cursor:pointer; margin-right:10px;">
+            Iniciar Migracion
+        </button>
+        <button onclick="pausarMigracion()" style="padding:12px 30px; background:#FF9800; color:white; border:none; border-radius:4px; font-size:16px; cursor:pointer; margin-right:10px;">
+            Pausar
+        </button>
+        <a href="/api/descargar" style="padding:12px 30px; background:#2196F3; color:white; text-decoration:none; border-radius:4px; font-size:16px;">
+            Descargar
+        </a>
+    </div>
+    
+    <!-- LOGS -->
+    <div style="background:#1e1e1e; color:#d4d4d4; padding:10px; border-radius:4px; height:200px; overflow-y:auto; font-family:monospace; font-size:12px;" id="logs">
+        <div>Sistema listo...</div>
+    </div>
+</div>
+
+<style>
+.panel-conexiones {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-bottom: 20px;
+}
+.conexion-panel {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.zona-subida {
+    border: 2px dashed #1a73e8;
+    padding: 40px;
+    text-align: center;
+    border-radius: 8px;
+    cursor: pointer;
+    background: #f8f9fa;
+}
+.zona-subida:hover {
+    background: #e3f2fd;
+}
+.metricas {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
+.metrica {
+    text-align: center;
+    padding: 10px;
+    border-radius: 6px;
+}
+.metrica span {
+    display: block;
+    font-size: 24px;
+    font-weight: bold;
+}
+.metrica small {
+    color: #666;
+    font-size: 11px;
+}
+.metrica.exito { background: #e8f5e9; }
+.metrica.exito span { color: #4CAF50; }
+.metrica.info { background: #e3f2fd; }
+.metrica.info span { color: #2196F3; }
+.metrica.warning { background: #fff3e0; }
+.metrica.warning span { color: #FF9800; }
+.metrica.error { background: #ffebee; }
+.metrica.error span { color: #f44336; }
+</style>
+
+<script>
+const socket = io();
+socket.on('connect', () => socket.emit('conectar'));
+
+// Recuperar estado al cargar
+window.onload = async function() {
+    try {
+        const resp = await fetch('/api/estado');
+        const datos = await resp.json();
+        
+        if (datos.estado === 'exito') {
+            document.getElementById('info-origen').style.display = 'block';
+            document.getElementById('info-origen').innerHTML = `
+                <p style="color:#4CAF50;">Archivo cargado: ${datos.tipo_detectado}</p>
+                <p>${datos.total_tablas} tablas detectadas</p>
+            `;
+            document.getElementById('zona-subida').innerHTML = `
+                <div style="padding:40px; color:#4CAF50;">
+                    <div style="font-size:40px;">[ Listo ]</div>
+                    <p>${datos.tipo_detectado} - ${datos.total_tablas} tablas</p>
+                </div>`;
+            
+            if (datos.motor_destino) {
+                document.getElementById('motor-destino').value = datos.motor_destino;
+                document.getElementById('destino-estado').textContent = 'Destino: ' + datos.motor_destino;
+                document.getElementById('destino-estado').style.color = 'green';
+            }
+            
+            if (datos.metricas && datos.metricas.tablas_ok > 0) {
+                actualizarMetricas(datos.metricas);
+                document.getElementById('porcentaje').textContent = '100%';
+                document.getElementById('barra').style.width = '100%';
+            }
+        }
+    } catch(e) {}
+};
+
+socket.on('progreso', (datos) => {
+    document.getElementById('barra').style.width = datos.porcentaje + '%';
+    document.getElementById('porcentaje').textContent = datos.porcentaje + '%';
+    document.getElementById('tabla-actual').textContent = datos.estado;
+    if (datos.metricas) actualizarMetricas(datos.metricas);
+});
+
+socket.on('log', (datos) => {
+    const logs = document.getElementById('logs');
+    const hora = new Date().toLocaleTimeString();
+    const item = document.createElement('div');
+    item.textContent = '[' + hora + '] ' + datos.mensaje;
+    if (datos.tipo === 'error') item.style.color = '#f44336';
+    logs.appendChild(item);
+    logs.scrollTop = logs.scrollHeight;
+});
+
+socket.on('migracion_completada', (m) => actualizarMetricas(m));
+
+function actualizarMetricas(m) {
+    document.getElementById('stat-tablas').textContent = m.tablas_ok || 0;
+    document.getElementById('stat-extraidos').textContent = m.extraidos || 0;
+    document.getElementById('stat-cargados').textContent = m.cargados || 0;
+    document.getElementById('stat-errores').textContent = m.errores || 0;
+}
+
+async function subirArchivo() {
+    const archivo = document.getElementById('archivo-input').files[0];
+    if (!archivo) return;
+    
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    
+    document.getElementById('zona-subida').innerHTML = '<p style="padding:40px;">Analizando...</p>';
+    
+    try {
+        const resp = await fetch('/api/subir-archivo', { method: 'POST', body: formData });
+        const datos = await resp.json();
+        
+        if (datos.estado === 'exito') {
+            document.getElementById('info-origen').style.display = 'block';
+            document.getElementById('info-origen').innerHTML = `
+                <p style="color:#4CAF50;">Archivo: ${datos.nombre_archivo}</p>
+                <p>Tipo: ${datos.tipo_detectado}</p>
+                <p>Tablas: ${datos.total_tablas}</p>
+            `;
+            document.getElementById('zona-subida').innerHTML = `
+                <div style="padding:40px; color:#4CAF50;">
+                    <div style="font-size:40px;">[ OK ]</div>
+                    <p>${datos.tipo_detectado}</p>
+                </div>`;
+        } else {
+            alert(datos.mensaje);
+        }
+    } catch(e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+async function configurarDestino() {
+    const motor = document.getElementById('motor-destino').value;
+    if (!motor) { alert('Seleccione un motor'); return; }
+    
+    document.getElementById('destino-estado').textContent = 'Configurando...';
+    
+    try {
+        const resp = await fetch('/api/configurar-destino', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({motor_destino: motor})
+        });
+        const datos = await resp.json();
+        
+        document.getElementById('destino-estado').textContent = datos.mensaje;
+        document.getElementById('destino-estado').style.color = datos.estado === 'exito' ? 'green' : 'red';
+    } catch(e) {
+        document.getElementById('destino-estado').textContent = 'Error';
+    }
+}
+
+async function iniciarMigracion() {
+    document.getElementById('btn-iniciar').disabled = true;
+    document.getElementById('btn-iniciar').textContent = 'Migrando...';
+    
+    try {
+        const resp = await fetch('/api/iniciar-migracion', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+        const datos = await resp.json();
+        if (datos.estado !== 'exito') {
+            alert(datos.mensaje);
+            document.getElementById('btn-iniciar').disabled = false;
+            document.getElementById('btn-iniciar').textContent = 'Iniciar Migracion';
+        }
+    } catch(e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+async function pausarMigracion() {
+    await fetch('/api/pausar', {method:'POST', headers:{'Content-Type':'application/json'}});
+    document.getElementById('btn-iniciar').disabled = false;
+    document.getElementById('btn-iniciar').textContent = 'Reanudar';
+}
+</script>
+{% endblock %}

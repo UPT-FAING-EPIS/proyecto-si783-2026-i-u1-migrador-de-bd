@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block titulo %}Migrador de Bases de Datos{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilo.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔄</text></svg>">
+</head>
+<body>
+    <nav class="barra-nav">
+        <div class="contenedor-nav">
+            <a href="/" class="logo">MigradorBD</a>
+            <div class="enlaces-nav">
+                <a href="/" class="{% if request.path == '/' %}activo{% endif %}">Inicio</a>
+                <a href="/configuracion" class="{% if request.path == '/configuracion' %}activo{% endif %}">Configuración</a>
+                <a href="/migracion" class="{% if request.path == '/migracion' %}activo{% endif %}">Migración</a>
+                <a href="/reporte" class="{% if request.path == '/reporte' %}activo{% endif %}">Reporte</a>
+            </div>
+        </div>
+    </nav>
+    
+    <main class="contenido">
+        {% block contenido %}{% endblock %}
+    </main>
+    
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
