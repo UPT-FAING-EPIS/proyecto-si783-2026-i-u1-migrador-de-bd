@@ -42,8 +42,12 @@ def _registrar_log(mensaje: str, tipo: str = 'info', ip: str = None):
     estado_app['logs'].append(entrada)
     socketio.emit('log', {'mensaje': mensaje, 'tipo': tipo})
 
+MAX_IPS = 1000  # limite para evitar crecimiento ilimitado de memoria
+
 def _registrar_ip(ip: str, actividad: str):
-    """Registra acceso de una IP."""
+    """Registra acceso de una IP (máximo MAX_IPS entradas)."""
+    if len(estado_app['ips']) >= MAX_IPS:
+        estado_app['ips'].pop(0)
     estado_app['ips'].append({
         'ip': ip,
         'fecha': datetime.now().strftime('%Y-%m-%d'),

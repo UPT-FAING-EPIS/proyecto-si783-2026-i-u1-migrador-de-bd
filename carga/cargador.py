@@ -22,6 +22,11 @@ class CargadorDestino:
     def _nombre_seguro(nombre: str) -> str:
         return str(nombre).replace(' ', '_').replace('-', '_').replace('.', '_')
 
+    # Tipos de origen que se mapean a tipos SQLite
+    INTEGER_TYPES = ('INT', 'SERIAL', 'BIGINT', 'SMALLINT')
+    REAL_TYPES = ('REAL', 'FLOAT', 'DOUBLE', 'NUMERIC', 'DECIMAL')
+    BLOB_TYPES = ('BLOB', 'BINARY', 'BYTES')
+
     def crear_estructura(self, esquema: Dict[str, Any]):
         creadas = 0
         with self.engine.connect() as conn:
@@ -50,11 +55,11 @@ class CargadorDestino:
                     col_nombre = self._nombre_seguro(col.get('nombre', 'col'))
                     tipo_origen = str(col.get('tipo', 'TEXT')).upper()
                     # Mapear tipos comunes a SQLite
-                    if any(t in tipo_origen for t in ('INT', 'SERIAL', 'BIGINT', 'SMALLINT')):
+                    if any(t in tipo_origen for t in self.INTEGER_TYPES):
                         tipo_sql = 'INTEGER'
-                    elif any(t in tipo_origen for t in ('REAL', 'FLOAT', 'DOUBLE', 'NUMERIC', 'DECIMAL')):
+                    elif any(t in tipo_origen for t in self.REAL_TYPES):
                         tipo_sql = 'REAL'
-                    elif any(t in tipo_origen for t in ('BLOB', 'BINARY', 'BYTES')):
+                    elif any(t in tipo_origen for t in self.BLOB_TYPES):
                         tipo_sql = 'BLOB'
                     else:
                         tipo_sql = 'TEXT'

@@ -31,7 +31,7 @@ class DetectorBaseDatos:
         # 2. Intentar leer como texto para detectar SQL dumps
         try:
             with open(ruta, 'r', encoding='utf-8', errors='ignore') as f:
-                contenido = f.read(20000).upper()
+                contenido = f.read(8000).upper()
 
             if 'CREATE TABLE' in contenido:
                 if 'POSTGRES' in contenido or 'PG_' in contenido or 'SERIAL' in contenido:
