@@ -10,11 +10,10 @@
     <div class="conexion-panel">
         <h3>PASO 1: Subir Base de Datos Origen</h3>
         <p style="color:#666; font-size:13px;">
-            Formatos soportados: .db, .sqlite, .sqlite3, .sql, .dump, .bak, .dmp, .json, .csv, .xlsx
+            Formatos soportados: .db, .sqlite, .sql, .dump, .json, .csv, .xlsx y cualquier archivo de base de datos compatible
         </p>
         
         <input type="file" id="archivo-input" 
-               accept=".db,.sqlite,.sqlite3,.sql,.dump,.bak,.dmp,.json,.bson,.csv,.xlsx,.xls,.rdb,.cql"
                onchange="subirArchivo()" style="display:none;">
         
         <div class="zona-subida" id="zona-subida" onclick="document.getElementById('archivo-input').click()">

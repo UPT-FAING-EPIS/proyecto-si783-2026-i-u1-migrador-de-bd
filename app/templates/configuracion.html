@@ -10,12 +10,11 @@
     <div class="conexion-panel">
         <h3>BASE DE DATOS ORIGEN</h3>
         <p style="color:#666; margin-bottom:15px;">
-            Suba su archivo de base de datos. Formatos soportados:<br>
-            .db, .sqlite, .sqlite3, .sql, .dump, .bak, .dmp, .json, .bson, .csv, .xlsx
+            Suba su archivo de base de datos. El sistema detectará automáticamente el tipo.<br>
+            Formatos soportados: .db, .sqlite, .sql, .dump, .json, .csv, .xlsx y cualquier archivo de base de datos compatible.
         </p>
         
         <input type="file" id="archivo-input" 
-               accept=".db,.sqlite,.sqlite3,.sql,.dump,.bak,.dmp,.json,.bson,.csv,.xlsx,.xls,.rdb,.cql"
                onchange="subirArchivo()" style="display:none;">
         
         <div class="zona-subida" id="zona-subida" onclick="document.getElementById('archivo-input').click()">

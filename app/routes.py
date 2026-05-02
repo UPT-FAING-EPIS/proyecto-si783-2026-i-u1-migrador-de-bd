@@ -3,6 +3,7 @@ from app import socketio
 import os
 import threading
 from werkzeug.utils import secure_filename
+from datetime import datetime
 
 import sys
 from pathlib import Path
@@ -25,8 +26,38 @@ estado_app = {
     'destino': None,
     'proceso_activo': False,
     'metricas': {'extraidos': 0, 'cargados': 0, 'errores': 0, 'tablas_ok': 0},
-    'historial': []
+    'historial': [],   # registros de migraciones completadas
+    'logs': [],        # log detallado de todas las acciones
+    'ips': [],         # registro de accesos por IP
 }
+
+def _registrar_log(mensaje: str, tipo: str = 'info', ip: str = None):
+    """Agrega entrada al log detallado de la aplicacion."""
+    entrada = {
+        'fecha': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'tipo': tipo,
+        'mensaje': mensaje,
+        'ip': ip or '',
+    }
+    estado_app['logs'].append(entrada)
+    socketio.emit('log', {'mensaje': mensaje, 'tipo': tipo})
+
+def _registrar_ip(ip: str, actividad: str):
+    """Registra acceso de una IP."""
+    estado_app['ips'].append({
+        'ip': ip,
+        'fecha': datetime.now().strftime('%Y-%m-%d'),
+        'hora': datetime.now().strftime('%H:%M:%S'),
+        'actividad': actividad,
+    })
+
+@principal.before_app_request
+def _capturar_ip():
+    ip = request.remote_addr or 'desconocida'
+    ruta = request.path
+    # No registrar assets estáticos ni sockets
+    if not ruta.startswith('/static') and not ruta.startswith('/socket.io'):
+        _registrar_ip(ip, ruta)
 
 @principal.route('/')
 def index():
@@ -40,9 +71,31 @@ def configuracion():
 def migracion():
     return render_template('configuracion.html')
 
+@principal.route('/historial')
+def historial():
+    return render_template('historial.html',
+                           historial=estado_app['historial'],
+                           logs=estado_app['logs'])
+
+@principal.route('/monitoreo-ip')
+def monitoreo_ip():
+    return render_template('monitoreo_ip.html', ips=estado_app['ips'])
+
+# Ruta de compatibilidad: redirigir /reporte a /historial
 @principal.route('/reporte')
 def reporte():
-    return render_template('reporte.html', metricas=estado_app['metricas'], historial=estado_app['historial'])
+    from flask import redirect, url_for
+    return redirect(url_for('principal.historial'))
+
+def _esquema_serializable(esquema: dict) -> dict:
+    """Convierte el esquema al formato simple de lista de columnas para la UI."""
+    resultado = {}
+    for tabla, info in esquema.items():
+        if isinstance(info, dict):
+            resultado[tabla] = info.get('columnas', [])
+        else:
+            resultado[tabla] = info
+    return resultado
 
 @principal.route('/api/subir-archivo', methods=['POST'])
 def api_subir_archivo():
@@ -57,20 +110,24 @@ def api_subir_archivo():
     ruta = os.path.join(UPLOAD_FOLDER, nombre)
     archivo.save(ruta)
     
+    ip = request.remote_addr or 'desconocida'
     tipo, mensaje, _ = DetectorBaseDatos.detectar(ruta, nombre)
     
     if tipo == 'Desconocido':
+        _registrar_log(f'Archivo rechazado "{nombre}": {mensaje}', 'error', ip)
         return jsonify({'estado': 'error', 'mensaje': mensaje})
     
     try:
         origen = ConectorOrigen(ruta, tipo)
         
         if not origen.tablas:
+            _registrar_log(f'Archivo "{nombre}" sin tablas detectadas', 'error', ip)
             return jsonify({'estado': 'error', 'mensaje': 'No se encontraron tablas'})
         
         estado_app['origen'] = origen
-        
-        socketio.emit('log', {'mensaje': f'Archivo detectado: {tipo} - {len(origen.tablas)} tablas'})
+        _registrar_log(
+            f'Archivo cargado: "{nombre}" ({tipo}) - {len(origen.tablas)} tablas', 'info', ip
+        )
         
         return jsonify({
             'estado': 'exito',
@@ -78,22 +135,26 @@ def api_subir_archivo():
             'nombre_archivo': nombre,
             'tablas': origen.tablas,
             'total_tablas': len(origen.tablas),
-            'esquema': origen.esquema
+            'esquema': _esquema_serializable(origen.esquema)
         })
     except Exception as e:
+        _registrar_log(f'Error al cargar "{nombre}": {str(e)}', 'error', ip)
         return jsonify({'estado': 'error', 'mensaje': f'Error: {str(e)}'})
 
 @principal.route('/api/configurar-destino', methods=['POST'])
 def api_configurar_destino():
     datos = request.json
     motor = datos.get('motor_destino', 'SQLite')
+    ip = request.remote_addr or 'desconocida'
     
     try:
         destino = CargadorDestino(motor)
         
         if estado_app['origen'] and estado_app['origen'].esquema:
             creadas = destino.crear_estructura(estado_app['origen'].esquema)
-            socketio.emit('log', {'mensaje': f'{creadas} tablas creadas en destino {motor}'})
+            _registrar_log(
+                f'Destino {motor} configurado: {creadas} tablas/estructuras creadas', 'info', ip
+            )
         
         estado_app['destino'] = destino
         
@@ -103,6 +164,7 @@ def api_configurar_destino():
             'motor': motor
         })
     except Exception as e:
+        _registrar_log(f'Error configurando destino {motor}: {str(e)}', 'error', ip)
         return jsonify({'estado': 'error', 'mensaje': str(e)})
 
 @principal.route('/api/iniciar-migracion', methods=['POST'])
@@ -112,10 +174,11 @@ def api_iniciar_migracion():
     if not estado_app['destino']:
         return jsonify({'estado': 'error', 'mensaje': 'Configure el destino primero'})
     
+    ip = request.remote_addr or 'desconocida'
     estado_app['proceso_activo'] = True
     estado_app['metricas'] = {'extraidos': 0, 'cargados': 0, 'errores': 0, 'tablas_ok': 0}
     
-    socketio.emit('log', {'mensaje': 'Iniciando migracion...'})
+    _registrar_log('Iniciando migracion...', 'info', ip)
     
     threading.Thread(target=ejecutar_migracion).start()
     return jsonify({'estado': 'exito'})
@@ -126,21 +189,22 @@ def ejecutar_migracion():
     tablas = origen.tablas
     total = len(tablas)
     
-    socketio.emit('log', {'mensaje': f'Migrando {total} tablas...'})
+    _registrar_log(f'Migrando {total} tablas...')
     
     for idx, tabla in enumerate(tablas):
         if not estado_app['proceso_activo']:
+            _registrar_log('Migracion pausada por el usuario', 'warning')
             break
         
         progreso = int(((idx + 1) / total) * 100) if total > 0 else 100
         
         try:
-            socketio.emit('log', {'mensaje': f'Extrayendo: {tabla}...'})
+            _registrar_log(f'Extrayendo: {tabla}...')
             df = origen.extraer_datos(tabla)
             estado_app['metricas']['extraidos'] += len(df)
             
             if not df.empty:
-                socketio.emit('log', {'mensaje': f'Cargando: {tabla} ({len(df)} registros)...'})
+                _registrar_log(f'Cargando: {tabla} ({len(df)} registros)...')
                 df = MapeadorDatos.limpiar_dataframe(df)
                 cargados = destino.cargar_tabla(tabla, df)
                 estado_app['metricas']['cargados'] += cargados
@@ -156,16 +220,23 @@ def ejecutar_migracion():
             
         except Exception as e:
             estado_app['metricas']['errores'] += 1
-            socketio.emit('log', {'mensaje': f'ERROR en {tabla}: {str(e)}', 'tipo': 'error'})
+            _registrar_log(f'ERROR en {tabla}: {str(e)}', 'error')
     
     estado_app['proceso_activo'] = False
     
-    from datetime import datetime
     estado_app['historial'].append({
         'fecha': datetime.now().isoformat(),
         'metricas': estado_app['metricas'].copy(),
-        'motor_destino': destino.motor
+        'motor_destino': destino.motor,
+        'archivo_origen': os.path.basename(origen.ruta) if origen.ruta else '',
+        'total_tablas': len(tablas),
     })
+    
+    _registrar_log(
+        f'Migracion completada. Tablas: {estado_app["metricas"]["tablas_ok"]}, '
+        f'Registros: {estado_app["metricas"]["cargados"]}, '
+        f'Errores: {estado_app["metricas"]["errores"]}'
+    )
     
     socketio.emit('progreso', {
         'porcentaje': 100,
@@ -174,7 +245,6 @@ def ejecutar_migracion():
         'metricas': estado_app['metricas']
     })
     
-    socketio.emit('log', {'mensaje': f'Migracion completada. Archivo: {os.path.basename(destino.ruta_salida)}'})
     socketio.emit('migracion_completada', estado_app['metricas'])
 
 @principal.route('/api/descargar')
@@ -188,7 +258,8 @@ def api_descargar():
 @principal.route('/api/pausar', methods=['POST'])
 def api_pausar():
     estado_app['proceso_activo'] = False
-    socketio.emit('log', {'mensaje': 'Migracion pausada'})
+    ip = request.remote_addr or 'desconocida'
+    _registrar_log('Migracion pausada', 'warning', ip)
     return jsonify({'estado': 'exito'})
 
 @principal.route('/api/estado')
@@ -199,11 +270,19 @@ def api_estado():
             'tipo_detectado': estado_app['origen'].tipo,
             'tablas': estado_app['origen'].tablas,
             'total_tablas': len(estado_app['origen'].tablas),
-            'esquema': estado_app['origen'].esquema,
+            'esquema': _esquema_serializable(estado_app['origen'].esquema),
             'motor_destino': estado_app['destino'].motor if estado_app['destino'] else None,
             'metricas': estado_app['metricas']
         })
     return jsonify({'estado': 'sin_origen'})
+
+@principal.route('/api/historial')
+def api_historial():
+    return jsonify({'historial': estado_app['historial'], 'logs': estado_app['logs']})
+
+@principal.route('/api/ips')
+def api_ips():
+    return jsonify({'ips': estado_app['ips']})
 
 @socketio.on('conectar')
 def conectar():
