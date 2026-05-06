@@ -2,6 +2,7 @@ import sqlite3
 import pandas as pd
 import json
 import os
+import re
 from typing import Dict, Any, List, Optional
 from sqlalchemy import create_engine, inspect, text
 
@@ -14,6 +15,8 @@ class ConectorOrigen:
         self.engine = None
         self.tablas = []
         self.esquema = {}
+        self._sql_inserts = {}
+        self._sql_contenido = ''
         
         if tipo == 'SQLite':
             self.engine = create_engine(f'sqlite:///{ruta}')
@@ -72,25 +75,227 @@ class ConectorOrigen:
         with open(self.ruta, 'r', encoding='utf-8', errors='ignore') as f:
             contenido = f.read()
 
+        self._sql_contenido = contenido
+        self._sql_inserts = {}
         self.tablas = []
-        for linea in contenido.split('\n'):
-            if 'CREATE TABLE' in linea.upper():
-                partes = linea.replace('`', '').replace('"', '').replace('[', '').replace(']', '').split()
-                for i, p in enumerate(partes):
-                    if p.upper() == 'TABLE' and i+1 < len(partes):
-                        tabla = partes[i+1].strip('();')
-                        if tabla and tabla not in self.tablas:
-                            self.tablas.append(tabla)
+        self.esquema = {}
 
-        self.esquema = {
-            t: {
-                'columnas': [{'nombre': 'columna_1', 'tipo': 'TEXT', 'nullable': True, 'default': None}],
-                'claves_primarias': [],
-                'claves_foraneas': [],
-                'indices': [],
-            }
-            for t in self.tablas
-        }
+        # Parsear CREATE TABLE para extraer nombres de tablas
+        create_table_pattern = r'CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`"\[]?([A-Za-z0-9_]+)[`"\]]?'
+        for match in re.finditer(create_table_pattern, contenido, re.IGNORECASE):
+            tabla = match.group(1)
+            if tabla and tabla not in self.tablas:
+                self.tablas.append(tabla)
+                self.esquema[tabla] = {
+                    'columnas': [],
+                    'claves_primarias': [],
+                    'claves_foraneas': [],
+                    'indices': [],
+                }
+
+        # Parsear INSERT INTO para obtener columnas y datos
+        # Patrón que captura: INSERT INTO tabla (cols) VALUES (valores);
+        insert_pattern = r'INSERT\s+INTO\s+[`"\[]?([A-Za-z0-9_]+)[`"\]]?\s*\((.*?)\)\s*VALUES\s*(.*?)(?:;|(?=\n\s*--|$))'
+        
+        for match in re.finditer(insert_pattern, contenido, re.IGNORECASE | re.DOTALL):
+            tabla = match.group(1)
+            cols_raw = match.group(2)
+            values_raw = match.group(3)
+            
+            # Limpiar nombres de columnas
+            columnas = [self._limpiar_sql_identificador(c) for c in cols_raw.split(',') if c.strip()]
+            
+            # Parsear todas las filas (pueden ser múltiples en una sola sentencia)
+            filas = self._extraer_todas_las_filas(values_raw)
+            
+            if tabla not in self.tablas:
+                self.tablas.append(tabla)
+                self.esquema[tabla] = {
+                    'columnas': [],
+                    'claves_primarias': [],
+                    'claves_foraneas': [],
+                    'indices': [],
+                }
+            
+            if filas:
+                info = self._sql_inserts.setdefault(tabla, {'columnas': columnas, 'filas': []})
+                if not info['columnas'] and columnas:
+                    info['columnas'] = columnas
+                info['filas'].extend(filas)
+                
+                # Actualizar esquema con las columnas encontradas
+                if not self.esquema[tabla]['columnas']:
+                    self.esquema[tabla]['columnas'] = [
+                        {'nombre': c, 'tipo': 'TEXT', 'nullable': True, 'default': None}
+                        for c in columnas
+                    ]
+
+    def _extraer_todas_las_filas(self, values_raw: str) -> List[List[Any]]:
+        """Extrae todas las filas de un bloque VALUES"""
+        filas = []
+        buffer = []
+        en_cadena = False
+        escape = False
+        profundidad = 0
+        
+        for caracter in values_raw:
+            if en_cadena:
+                buffer.append(caracter)
+                if escape:
+                    escape = False
+                elif caracter == '\\':
+                    escape = True
+                elif caracter == "'":
+                    en_cadena = False
+                continue
+            
+            if caracter == "'":
+                en_cadena = True
+                buffer.append(caracter)
+                continue
+                
+            if caracter == '(':
+                if profundidad == 0:
+                    buffer = []
+                else:
+                    buffer.append(caracter)
+                profundidad += 1
+                continue
+                
+            if caracter == ')':
+                profundidad -= 1
+                if profundidad == 0:
+                    fila_texto = ''.join(buffer).strip()
+                    if fila_texto:
+                        campos = self._separar_sql_campos(fila_texto)
+                        fila_datos = [self._parsear_sql_literal(campo) for campo in campos]
+                        if fila_datos:
+                            filas.append(fila_datos)
+                    buffer = []
+                else:
+                    buffer.append(caracter)
+                continue
+                
+            if profundidad > 0:
+                buffer.append(caracter)
+        
+        return filas
+
+    @staticmethod
+    def _limpiar_sql_identificador(valor: str) -> str:
+        return str(valor).strip().strip('`"[]')
+
+    @staticmethod
+    def _parsear_sql_literal(token: str):
+        token = token.strip()
+        if not token or token.upper() == 'NULL':
+            return None
+        if token.lower().startswith("b'") and token.endswith("'"):
+            token = token[2:-1]
+        if token.startswith("'") and token.endswith("'"):
+            valor = token[1:-1]
+            valor = valor.replace("\\'", "'").replace("''", "'")
+            valor = valor.replace('\\n', '\n').replace('\\r', '\r').replace('\\t', '\t')
+            return valor
+        if re.fullmatch(r'-?\d+', token):
+            try:
+                return int(token)
+            except Exception:
+                return token
+        if re.fullmatch(r'-?\d+\.\d+', token):
+            try:
+                return float(token)
+            except Exception:
+                return token
+        return token
+
+    def _separar_sql_campos(self, fila: str) -> List[str]:
+        campos = []
+        actual = []
+        en_cadena = False
+        escape = False
+        profundidad = 0
+
+        for caracter in fila:
+            if en_cadena:
+                actual.append(caracter)
+                if escape:
+                    escape = False
+                elif caracter == '\\':
+                    escape = True
+                elif caracter == "'":
+                    en_cadena = False
+                continue
+
+            if caracter == "'":
+                en_cadena = True
+                actual.append(caracter)
+                continue
+            if caracter == '(':
+                profundidad += 1
+                actual.append(caracter)
+                continue
+            if caracter == ')':
+                profundidad = max(0, profundidad - 1)
+                actual.append(caracter)
+                continue
+            if caracter == ',' and profundidad == 0:
+                campos.append(''.join(actual).strip())
+                actual = []
+                continue
+            actual.append(caracter)
+
+        if actual:
+            campos.append(''.join(actual).strip())
+        return campos
+
+    def _parsear_sql_values(self, values_raw: str) -> List[List[Any]]:
+        filas = []
+        fila_actual = []
+        buffer = []
+        en_cadena = False
+        escape = False
+        profundidad = 0
+
+        for caracter in values_raw:
+            if en_cadena:
+                buffer.append(caracter)
+                if escape:
+                    escape = False
+                elif caracter == '\\':
+                    escape = True
+                elif caracter == "'":
+                    en_cadena = False
+                continue
+
+            if caracter == "'":
+                en_cadena = True
+                buffer.append(caracter)
+                continue
+            if caracter == '(':
+                if profundidad == 0:
+                    buffer = []
+                else:
+                    buffer.append(caracter)
+                profundidad += 1
+                continue
+            if caracter == ')':
+                profundidad -= 1
+                if profundidad == 0:
+                    fila = ''.join(buffer).strip()
+                    if fila:
+                        campos = self._separar_sql_campos(fila)
+                        fila_actual = [self._parsear_sql_literal(campo) for campo in campos]
+                        filas.append(fila_actual)
+                    buffer = []
+                    fila_actual = []
+                else:
+                    buffer.append(caracter)
+                continue
+            if profundidad > 0:
+                buffer.append(caracter)
+
+        return filas
     
     def _cargar_json(self):
         with open(self.ruta, 'r', encoding='utf-8') as f:
@@ -161,6 +366,13 @@ class ConectorOrigen:
         """Extrae datos de una tabla especifica"""
         if self.tipo == 'SQLite':
             return pd.read_sql(f'SELECT * FROM "{tabla}"', self.engine)
+        elif self.tipo in ['PostgreSQL', 'MySQL', 'Microsoft SQL Server', 'Oracle', 'SQL Generico']:
+            info = self._sql_inserts.get(tabla)
+            if info and info.get('filas'):
+                columnas = info.get('columnas') or [c['nombre'] for c in self.esquema.get(tabla, {}).get('columnas', [])]
+                return pd.DataFrame(info['filas'], columns=columnas)
+            columnas = [c['nombre'] for c in self.esquema.get(tabla, {}).get('columnas', [])]
+            return pd.DataFrame(columns=columnas)
         elif self.tipo == 'CSV':
             return pd.read_csv(self.ruta)
         elif self.tipo == 'Excel':

@@ -6,6 +6,7 @@
     <title>{% block titulo %}Migrador de Bases de Datos{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/estilo.css') }}">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔄</text></svg>">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 </head>
 <body>
     <nav class="barra-nav">
@@ -13,9 +14,7 @@
             <a href="/" class="logo">MigradorBD</a>
             <div class="enlaces-nav">
                 <a href="/" class="{% if request.path == '/' %}activo{% endif %}">Inicio</a>
-                <a href="/configuracion" class="{% if request.path == '/configuracion' %}activo{% endif %}">Configuración</a>
                 <a href="/migracion" class="{% if request.path == '/migracion' %}activo{% endif %}">Migración</a>
-                <a href="/historial" class="{% if request.path == '/historial' %}activo{% endif %}">Historial</a>
                 <a href="/monitoreo-ip" class="{% if request.path == '/monitoreo-ip' %}activo{% endif %}">Monitoreo IP</a>
             </div>
         </div>
@@ -24,8 +23,5 @@
     <main class="contenido">
         {% block contenido %}{% endblock %}
     </main>
-    
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

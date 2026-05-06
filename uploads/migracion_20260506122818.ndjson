@@ -1,0 +1,34 @@
+{"index": {"_index": "tbcargo", "_id": 0}}
+{"idcargo": 1, "nombre": "ADMINISTRADOR", "estado": 1}
+{"index": {"_index": "tbcargo", "_id": 1}}
+{"idcargo": 2, "nombre": "VENDEDOR", "estado": 1}
+{"index": {"_index": "tbcargo", "_id": 2}}
+{"idcargo": 3, "nombre": "ALMACENERO", "estado": 1}
+{"index": {"_index": "tbcategoria", "_id": 0}}
+{"idcategoria": 1, "nombre": "Electrónicos", "descripcion": "Productos electrónicos y tecnológicos", "estado": 1, "fecha_creacion": "2025-10-21 07:32:14"}
+{"index": {"_index": "tbcategoria", "_id": 1}}
+{"idcategoria": 2, "nombre": "Ropa", "descripcion": "Prendas de vestir para hombres, mujeres y niños", "estado": 1, "fecha_creacion": "2025-10-21 07:32:14"}
+{"index": {"_index": "tbcategoria", "_id": 2}}
+{"idcategoria": 3, "nombre": "Hogar", "descripcion": "Artículos para el hogar y decoración", "estado": 1, "fecha_creacion": "2025-10-21 07:32:14"}
+{"index": {"_index": "tbcategoria", "_id": 3}}
+{"idcategoria": 4, "nombre": "Deportes", "descripcion": "Equipos y artículos deportivos", "estado": 1, "fecha_creacion": "2025-10-21 07:32:14"}
+{"index": {"_index": "tbcliente", "_id": 0}}
+{"idcliente": 1, "dni": "11111111", "nombre": "Alberto", "apellido": "Mamani", "email": "albertomamani@gmail.com", "telefono": "963852741", "direccion": "Av. Callao", "clave": "cliente123", "estado": 1, "fecha_registro": "2025-10-19 17:51:29"}
+{"index": {"_index": "tbproducto", "_id": 0}}
+{"idproducto": 1, "codigo": "PROD001", "nombre": "Laptop HP 15\"", "descripcion": "Laptop HP 15.6 pulgadas, 8GB RAM, 256GB SSD", "precio": 1200.0, "stock": 10, "idcategoria": 1, "imagen": "laptop.jpg", "estado": 1, "fecha_creacion": "2025-10-21 07:32:14"}
+{"index": {"_index": "tbproducto", "_id": 1}}
+{"idproducto": 2, "codigo": "PROD002", "nombre": "Smartphone Samsung", "descripcion": "Smartphone Samsung Galaxy A54 128GB", "precio": 450.0, "stock": 25, "idcategoria": 1, "imagen": "smartphone.jpg", "estado": 1, "fecha_creacion": "2025-10-21 07:32:14"}
+{"index": {"_index": "tbproducto", "_id": 2}}
+{"idproducto": 3, "codigo": "PROD003", "nombre": "Camiseta Nike", "descripcion": "Camiseta deportiva Nike Dri-FIT", "precio": 35.0, "stock": 50, "idcategoria": 2, "imagen": "camiseta.jpg", "estado": 1, "fecha_creacion": "2025-10-21 07:32:14"}
+{"index": {"_index": "tbproducto", "_id": 3}}
+{"idproducto": 4, "codigo": "PROD004", "nombre": "Zapatos Deportivos", "descripcion": "Zapatos deportivos Adidas Running", "precio": 85.0, "stock": 30, "idcategoria": 2, "imagen": "zapatos.jpg", "estado": 1, "fecha_creacion": "2025-10-21 07:32:14"}
+{"index": {"_index": "tbproducto", "_id": 4}}
+{"idproducto": 5, "codigo": "PROD005", "nombre": "Sofá 3 Plazas", "descripcion": "Sofá moderno 3 plazas color gris", "precio": 650.0, "stock": 5, "idcategoria": 3, "imagen": "sofa.jpg", "estado": 1, "fecha_creacion": "2025-10-21 07:32:14"}
+{"index": {"_index": "tbproducto", "_id": 5}}
+{"idproducto": 6, "codigo": "PROD006", "nombre": "Pelota de Fútbol", "descripcion": "Pelota de fútbol profesional tamaño 5", "precio": 25.0, "stock": 40, "idcategoria": 4, "imagen": "pelota.jpg", "estado": 1, "fecha_creacion": "2025-10-21 07:32:14"}
+{"index": {"_index": "tbusuario", "_id": 0}}
+{"idusuario": 1, "dni": "12345678", "nombre": "Juan", "apellido": "Pérez", "email": "juan@dbtienda.com", "telefono": "987654321", "direccion": "Av. Principal 123", "usuario": "admin", "clave": "admin123", "idcargo": 1, "estado": 1, "fecha_registro": "2025-10-21 07:32:14"}
+{"index": {"_index": "tbusuario", "_id": 1}}
+{"idusuario": 2, "dni": "87654321", "nombre": "María", "apellido": "Gómez", "email": "maria@dbtienda.com", "telefono": "987654322", "direccion": "Av. Secundaria 456", "usuario": "vendedor", "clave": "vendedor123", "idcargo": 2, "estado": 1, "fecha_registro": "2025-10-21 07:32:14"}
+{"index": {"_index": "tbusuario", "_id": 2}}
+{"idusuario": 3, "dni": "11223344", "nombre": "Carlos", "apellido": "López", "email": "carlos@dbtienda.com", "telefono": "987654323", "direccion": "Calle Los Olivos 789", "usuario": "almacen", "clave": "almacen123", "idcargo": 3, "estado": 1, "fecha_registro": "2025-10-21 07:32:14"}

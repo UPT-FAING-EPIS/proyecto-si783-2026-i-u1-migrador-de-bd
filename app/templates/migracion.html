@@ -85,9 +85,12 @@
         <button onclick="pausarMigracion()" style="padding:12px 30px; background:#FF9800; color:white; border:none; border-radius:4px; font-size:16px; cursor:pointer; margin-right:10px;">
             Pausar
         </button>
-        <a href="/api/descargar" style="padding:12px 30px; background:#2196F3; color:white; text-decoration:none; border-radius:4px; font-size:16px;">
+        <button id="btn-crear" onclick="crearEstructura()" style="padding:12px 20px; background:#00796B; color:white; border:none; border-radius:4px; font-size:14px; margin-right:8px;">
+            Crear Tablas
+        </button>
+        <button onclick="descargar()" id="btn-descargar" style="padding:12px 30px; background:#2196F3; color:white; border:none; border-radius:4px; font-size:16px;">
             Descargar
-        </a>
+        </button>
     </div>
     
     <!-- LOGS -->
@@ -152,6 +155,8 @@
 
 <script>
 const socket = io();
+let migracionActiva = false;
+let intervaloEstado = null;
 socket.on('connect', () => socket.emit('conectar'));
 
 // Recuperar estado al cargar
@@ -204,7 +209,41 @@ socket.on('log', (datos) => {
     logs.scrollTop = logs.scrollHeight;
 });
 
-socket.on('migracion_completada', (m) => actualizarMetricas(m));
+socket.on('migracion_completada', (m) => {
+    migracionActiva = false;
+    if (intervaloEstado) {
+        clearInterval(intervaloEstado);
+        intervaloEstado = null;
+    }
+    const btn = document.getElementById('btn-iniciar');
+    if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Iniciar Migracion';
+    }
+    actualizarMetricas(m);
+    const logs = document.getElementById('logs');
+    if (logs) {
+        const item = document.createElement('div');
+        item.textContent = '[sistema] Migración completada';
+        logs.appendChild(item);
+        logs.scrollTop = logs.scrollHeight;
+    }
+});
+
+socket.on('disconnect', () => {
+    migracionActiva = false;
+    if (intervaloEstado) {
+        clearInterval(intervaloEstado);
+        intervaloEstado = null;
+    }
+    const logs = document.getElementById('logs');
+    if (logs) {
+        const item = document.createElement('div');
+        item.textContent = '[conexion] Se perdió la conexión en tiempo real';
+        item.style.color = '#ff9800';
+        logs.appendChild(item);
+    }
+});
 
 function actualizarMetricas(m) {
     document.getElementById('stat-tablas').textContent = m.tablas_ok || 0;
@@ -251,6 +290,7 @@ async function configurarDestino() {
     if (!motor) { alert('Seleccione un motor'); return; }
     
     document.getElementById('destino-estado').textContent = 'Configurando...';
+    actualizarBotonDescargar(motor);
     
     try {
         const resp = await fetch('/api/configurar-destino', {
@@ -267,9 +307,42 @@ async function configurarDestino() {
     }
 }
 
+function actualizarBotonDescargar(motor) {
+    const btn = document.getElementById('btn-descargar');
+    if (!btn) return;
+    
+    if (/sqlite/i.test(motor)) {
+        btn.textContent = 'Descargar';
+        btn.style.background = '#2196F3';
+    } else if (/mysql|postgre|sql server|oracle/i.test(motor)) {
+        btn.textContent = 'Descargar';
+        btn.style.background = '#FF5722';
+    } else if (/mongo/i.test(motor)) {
+        btn.textContent = 'Descargar';
+        btn.style.background = '#FFB300';
+    } else if (/redis|cassandra|elasticsearch/i.test(motor)) {
+        btn.textContent = 'Descargar';
+        btn.style.background = '#9C27B0';
+    } else {
+        btn.textContent = 'Descargar';
+        btn.style.background = '#757575';
+    }
+}
+
 async function iniciarMigracion() {
-    document.getElementById('btn-iniciar').disabled = true;
-    document.getElementById('btn-iniciar').textContent = 'Migrando...';
+    const btn = document.getElementById('btn-iniciar');
+    const logs = document.getElementById('logs');
+    if (migracionActiva) return;
+    migracionActiva = true;
+    btn.disabled = true;
+    btn.textContent = 'Migrando...';
+
+    if (logs) {
+        const item = document.createElement('div');
+        item.textContent = '[sistema] Iniciando migración...';
+        logs.appendChild(item);
+        logs.scrollTop = logs.scrollHeight;
+    }
     
     try {
         const resp = await fetch('/api/iniciar-migracion', {
@@ -279,18 +352,121 @@ async function iniciarMigracion() {
         const datos = await resp.json();
         if (datos.estado !== 'exito') {
             alert(datos.mensaje);
-            document.getElementById('btn-iniciar').disabled = false;
-            document.getElementById('btn-iniciar').textContent = 'Iniciar Migracion';
+            migracionActiva = false;
+            btn.disabled = false;
+            btn.textContent = 'Iniciar Migracion';
+        } else {
+            iniciarSeguimientoEstado();
         }
     } catch(e) {
         alert('Error: ' + e.message);
+        migracionActiva = false;
+        btn.disabled = false;
+        btn.textContent = 'Iniciar Migracion';
     }
+}
+
+function iniciarSeguimientoEstado() {
+    if (intervaloEstado) return;
+    intervaloEstado = setInterval(async () => {
+        try {
+            const resp = await fetch('/api/estado');
+            const datos = await resp.json();
+            if (datos.estado !== 'exito') return;
+
+            if (datos.metricas) actualizarMetricas(datos.metricas);
+
+            if (!datos.proceso_activo && migracionActiva) {
+                migracionActiva = false;
+                const btn = document.getElementById('btn-iniciar');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Iniciar Migracion';
+                }
+                if (intervaloEstado) {
+                    clearInterval(intervaloEstado);
+                    intervaloEstado = null;
+                }
+
+                const logs = document.getElementById('logs');
+                if (logs) {
+                    const item = document.createElement('div');
+                    item.textContent = '[sistema] Migración finalizada desde seguimiento de estado';
+                    logs.appendChild(item);
+                    logs.scrollTop = logs.scrollHeight;
+                }
+            }
+        } catch (e) {
+            // no bloquear la UI si el polling falla temporalmente
+        }
+    }, 1000);
 }
 
 async function pausarMigracion() {
     await fetch('/api/pausar', {method:'POST', headers:{'Content-Type':'application/json'}});
     document.getElementById('btn-iniciar').disabled = false;
     document.getElementById('btn-iniciar').textContent = 'Reanudar';
+}
+
+async function crearEstructura() {
+    const btn = document.getElementById('btn-crear');
+    if (btn) btn.disabled = true;
+    try {
+        const resp = await fetch('/api/crear-estructura', {method: 'POST', headers: {'Content-Type':'application/json'}});
+        const datos = await resp.json();
+        alert(datos.mensaje || JSON.stringify(datos));
+    } catch (e) {
+        alert('Error: ' + e.message);
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+function _getFilenameFromDisposition(disposition) {
+    if (!disposition) return null;
+    const match = /filename\*?=(?:UTF-8'')?"?([^;"']+)"?/.exec(disposition);
+    return match ? decodeURIComponent(match[1]) : null;
+}
+
+async function _downloadBlobResponse(resp, fallbackName) {
+    const ctype = resp.headers.get('content-type') || '';
+    if (ctype.includes('application/json')) {
+        try { const j = await resp.json(); alert(j.mensaje || JSON.stringify(j)); return; } catch(e) { alert('Error descargando'); return; }
+    }
+    if (!resp.ok) { alert('Error descargando archivo'); return; }
+    const blob = await resp.blob();
+    const disp = resp.headers.get('Content-Disposition') || resp.headers.get('content-disposition');
+    let filename = _getFilenameFromDisposition(disp) || fallbackName || 'resultado.bin';
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+}
+
+async function descargar() {
+    const motor = document.getElementById('motor-destino').value || '';
+    if (!motor) { alert('Seleccione un motor destino primero'); return; }
+    
+    document.getElementById('btn-descargar').disabled = true;
+    try {
+        const resp = await fetch('/api/descargar?motor=' + encodeURIComponent(motor));
+        
+        // Determinar extensión según motor
+        let ext = '.bin';
+        if (/sqlite/i.test(motor)) ext = '.db';
+        else if (/mysql|postgre|sql server|oracle/i.test(motor)) ext = '.sql';
+        else if (/mongo/i.test(motor)) ext = '.json';
+        else if (/redis|cassandra|elasticsearch/i.test(motor)) ext = '.json';
+        
+        const fallback = 'migracion' + ext;
+        await _downloadBlobResponse(resp, fallback);
+    } finally {
+        document.getElementById('btn-descargar').disabled = false;
+    }
 }
 </script>
 {% endblock %}

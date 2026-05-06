@@ -123,5 +123,288 @@ class CargadorDestino:
             print(f"Error cargando: {e}")
             return 0
     
+    def generar_sql_dump(self) -> str:
+        """Genera un dump SQL del SQLite migrado"""
+        import sqlite3
+        
+        if not os.path.exists(self.ruta_salida):
+            return ""
+        
+        conn = sqlite3.connect(self.ruta_salida)
+        cursor = conn.cursor()
+        
+        sql_dump = "-- SQL Dump generado por MigradorBD\n"
+        sql_dump += "-- Fecha: " + str(__import__('datetime').datetime.now()) + "\n\n"
+        
+        # Obtener todas las tablas
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+        tablas = cursor.fetchall()
+        
+        for (tabla,) in tablas:
+            # Obtener CREATE TABLE
+            cursor.execute(f"SELECT sql FROM sqlite_master WHERE type='table' AND name='{tabla}'")
+            create_sql = cursor.fetchone()
+            if create_sql and create_sql[0]:
+                sql_dump += create_sql[0] + ";\n\n"
+            
+            # Obtener datos
+            cursor.execute(f"SELECT * FROM `{tabla}`")
+            filas = cursor.fetchall()
+            
+            if filas:
+                # Obtener nombres de columnas
+                cursor.execute(f"PRAGMA table_info(`{tabla}`)")
+                columnas = [col[1] for col in cursor.fetchall()]
+                
+                # Generar INSERT statements
+                cols_str = ', '.join(f'`{col}`' for col in columnas)
+                for fila in filas:
+                    valores = []
+                    for valor in fila:
+                        if valor is None:
+                            valores.append('NULL')
+                        elif isinstance(valor, str):
+                            # Escapar comillas simples
+                            valor_escape = valor.replace("'", "''")
+                            valores.append(f"'{valor_escape}'")
+                        elif isinstance(valor, (int, float)):
+                            valores.append(str(valor))
+                        else:
+                            valores.append(f"'{str(valor)}'")
+                    valores_str = ', '.join(valores)
+                    sql_dump += f"INSERT INTO `{tabla}` ({cols_str}) VALUES ({valores_str});\n"
+                sql_dump += "\n"
+        
+        conn.close()
+        return sql_dump
+    
+    def generar_export(self, motor: str = None) -> tuple:
+        """Genera exportación en el formato específico del motor.
+        Retorna (contenido, extensión, mimetype, es_binario)
+        Si es_binario=True, el contenido es la ruta al archivo"""
+        if motor is None:
+            motor = self.motor.lower()
+        else:
+            motor = motor.lower()
+        
+        # SQLite - retornar archivo binario
+        if 'sqlite' in motor:
+            return (self.ruta_salida, '.db', 'application/x-sqlite3', True)
+        
+        # SQL databases
+        elif any(x in motor for x in ['mysql', 'postgres', 'oracle', 'sql server', 'mariadb']):
+            return (self._generar_sql(), '.sql', 'application/sql', False)
+        
+        # MongoDB - JSON format
+        elif 'mongo' in motor:
+            return (self._generar_json(), '.json', 'application/json', False)
+        
+        # Elasticsearch - NDJSON (newline-delimited JSON)
+        elif 'elasticsearch' in motor:
+            return (self._generar_ndjson(), '.ndjson', 'application/x-ndjson', False)
+        
+        # Cassandra - CQL
+        elif 'cassandra' in motor:
+            return (self._generar_cql(), '.cql', 'text/plain', False)
+        
+        # Redis - Redis commands
+        elif 'redis' in motor:
+            return (self._generar_redis(), '.redis', 'text/plain', False)
+        
+        # Default - JSON
+        else:
+            return (self._generar_json(), '.json', 'application/json', False)
+    
+    def _generar_sql(self) -> str:
+        """Genera dump SQL para bases de datos SQL (MySQL, PostgreSQL, Oracle, etc)"""
+        return self.generar_sql_dump()
+    
+    def _generar_json(self) -> str:
+        """Genera JSON para MongoDB y otros JSON-based databases"""
+        import sqlite3
+        import json
+        from datetime import datetime
+        
+        if not os.path.exists(self.ruta_salida):
+            return ""
+        
+        conn = sqlite3.connect(self.ruta_salida)
+        cursor = conn.cursor()
+        
+        export_data = {
+            "metadata": {
+                "generator": "MigradorBD",
+                "timestamp": datetime.now().isoformat(),
+                "motor": self.motor
+            },
+            "collections": {}
+        }
+        
+        # Obtener todas las tablas
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+        tablas = cursor.fetchall()
+        
+        for (tabla,) in tablas:
+            cursor.execute(f"PRAGMA table_info(`{tabla}`)")
+            columnas = [col[1] for col in cursor.fetchall()]
+            
+            cursor.execute(f"SELECT * FROM `{tabla}`")
+            filas = cursor.fetchall()
+            
+            docs = []
+            for fila in filas:
+                doc = {}
+                for col, valor in zip(columnas, fila):
+                    doc[col] = valor
+                docs.append(doc)
+            
+            export_data["collections"][tabla] = docs
+        
+        conn.close()
+        return json.dumps(export_data, ensure_ascii=False, indent=2, default=str)
+    
+    def _generar_ndjson(self) -> str:
+        """Genera NDJSON para Elasticsearch"""
+        import sqlite3
+        import json
+        
+        if not os.path.exists(self.ruta_salida):
+            return ""
+        
+        conn = sqlite3.connect(self.ruta_salida)
+        cursor = conn.cursor()
+        
+        ndjson_lines = []
+        
+        # Obtener todas las tablas
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+        tablas = cursor.fetchall()
+        
+        for (tabla,) in tablas:
+            cursor.execute(f"PRAGMA table_info(`{tabla}`)")
+            columnas = [col[1] for col in cursor.fetchall()]
+            
+            cursor.execute(f"SELECT * FROM `{tabla}`")
+            filas = cursor.fetchall()
+            
+            for idx, fila in enumerate(filas):
+                # Metadata line (para Elasticsearch bulk API)
+                metadata = json.dumps({"index": {"_index": tabla, "_id": idx}})
+                ndjson_lines.append(metadata)
+                
+                # Data line
+                doc = {}
+                for col, valor in zip(columnas, fila):
+                    doc[col] = valor
+                data = json.dumps(doc, ensure_ascii=False, default=str)
+                ndjson_lines.append(data)
+        
+        conn.close()
+        return '\n'.join(ndjson_lines)
+    
+    def _generar_cql(self) -> str:
+        """Genera CQL (Cassandra Query Language) para Apache Cassandra"""
+        import sqlite3
+        
+        if not os.path.exists(self.ruta_salida):
+            return ""
+        
+        conn = sqlite3.connect(self.ruta_salida)
+        cursor = conn.cursor()
+        
+        cql_dump = "-- CQL Script generado por MigradorBD\n"
+        cql_dump += "-- Fecha: " + str(__import__('datetime').datetime.now()) + "\n\n"
+        cql_dump += "-- Cassandra keyspace (crear manualmente si es necesario)\n"
+        cql_dump += "-- USE migracion_keyspace;\n\n"
+        
+        # Obtener todas las tablas
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+        tablas = cursor.fetchall()
+        
+        for (tabla,) in tablas:
+            cursor.execute(f"PRAGMA table_info(`{tabla}`)")
+            columnas_info = cursor.fetchall()
+            columnas = [col[1] for col in columnas_info]
+            
+            # Crear tabla CQL (conversión simple de tipos)
+            cql_dump += f"CREATE TABLE IF NOT EXISTS {tabla} (\n"
+            for i, col_info in enumerate(columnas_info):
+                col_name = col_info[1]
+                # Mapeo simple de tipos SQLite a CQL
+                cql_dump += f"  {col_name} text"
+                if i < len(columnas_info) - 1:
+                    cql_dump += ",\n"
+                else:
+                    cql_dump += ",\n  PRIMARY KEY (id)\n"  # Simplified
+            cql_dump += ") WITH CLUSTERING ORDER BY (id DESC);\n\n"
+            
+            # Obtener datos
+            cursor.execute(f"SELECT * FROM `{tabla}`")
+            filas = cursor.fetchall()
+            
+            if filas:
+                for fila in filas:
+                    valores = []
+                    for valor in fila:
+                        if valor is None:
+                            valores.append("null")
+                        elif isinstance(valor, str):
+                            valor_escape = valor.replace("'", "''")
+                            valores.append(f"'{valor_escape}'")
+                        elif isinstance(valor, (int, float)):
+                            valores.append(str(valor))
+                        else:
+                            valores.append(f"'{str(valor)}'")
+                    
+                    cols_str = ', '.join(columnas)
+                    valores_str = ', '.join(valores)
+                    cql_dump += f"INSERT INTO {tabla} ({cols_str}) VALUES ({valores_str});\n"
+                cql_dump += "\n"
+        
+        conn.close()
+        return cql_dump
+    
+    def _generar_redis(self) -> str:
+        """Genera comandos Redis para importar datos"""
+        import sqlite3
+        
+        if not os.path.exists(self.ruta_salida):
+            return ""
+        
+        conn = sqlite3.connect(self.ruta_salida)
+        cursor = conn.cursor()
+        
+        redis_cmds = "# Redis commands generadas por MigradorBD\n"
+        redis_cmds += "# Fecha: " + str(__import__('datetime').datetime.now()) + "\n\n"
+        redis_cmds += "# Usar: redis-cli < archivo.redis\n\n"
+        
+        # Obtener todas las tablas
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+        tablas = cursor.fetchall()
+        
+        for (tabla,) in tablas:
+            cursor.execute(f"PRAGMA table_info(`{tabla}`)")
+            columnas = [col[1] for col in cursor.fetchall()]
+            
+            cursor.execute(f"SELECT * FROM `{tabla}`")
+            filas = cursor.fetchall()
+            
+            for idx, fila in enumerate(filas):
+                # Usar HSET para almacenar registros como hashes
+                key = f"{tabla}:{idx}"
+                redis_cmds += f"HSET {key}"
+                
+                for col, valor in zip(columnas, fila):
+                    if valor is not None:
+                        valor_str = str(valor).replace('"', '\\"')
+                        redis_cmds += f' {col} "{valor_str}"'
+                
+                redis_cmds += "\n"
+            
+            redis_cmds += "\n"
+        
+        conn.close()
+        return redis_cmds
+    
     def get_ruta_salida(self) -> str:
         return self.ruta_salida
