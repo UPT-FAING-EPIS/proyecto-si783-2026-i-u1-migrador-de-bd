@@ -7,3 +7,6 @@ authlib==1.2.0
 python-dotenv==1.0.0
 requests==2.31.0
 Flask-Mail==0.9.1
+gunicorn==21.2.0
+eventlet==0.33.3
+bcrypt==4.0.1
