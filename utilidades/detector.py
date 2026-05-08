@@ -1,8 +1,38 @@
 import os
 import json
 import sqlite3
+import re
 import pandas as pd
 from typing import Dict, Any, Optional, Tuple
+
+
+def _extraer_texto_imprimible(datos: bytes, minimo: int = 6) -> str:
+    """Extrae secuencias ASCII imprimibles para inspeccionar archivos binarios."""
+    fragmentos = re.findall(rb"[ -~]{%d,}" % minimo, datos)
+    if not fragmentos:
+        return ""
+    return "\n".join(fragmento.decode("latin-1", errors="ignore") for fragmento in fragmentos)
+
+
+def _detectar_sql_desde_texto(texto: str) -> Tuple[str, str]:
+    """Devuelve un tipo SQL estimado a partir de fragmentos de texto."""
+    mayus = texto.upper()
+
+    if 'CREATE TABLE' in mayus:
+        if 'POSTGRES' in mayus or 'PG_' in mayus or 'SERIAL' in mayus:
+            return 'PostgreSQL', 'Dump PostgreSQL detectado'
+        if 'AUTO_INCREMENT' in mayus or 'ENGINE=INNODB' in mayus or 'ENGINE=MYISAM' in mayus:
+            return 'MySQL', 'Dump MySQL detectado'
+        if 'NVARCHAR' in mayus or 'IDENTITY(' in mayus or 'GO\n' in mayus or '\nGO\n' in mayus:
+            return 'Microsoft SQL Server', 'Dump SQL Server detectado'
+        if 'VARCHAR2' in mayus or 'NUMBER(' in mayus or 'TABLESPACE' in mayus:
+            return 'Oracle', 'Dump Oracle detectado'
+        return 'SQL Generico', 'Script SQL detectado'
+
+    if any(clave in mayus for clave in ['CREATE VIEW', 'CREATE TRIGGER', 'CREATE PROCEDURE', 'CREATE PROC', 'CREATE FUNCTION', 'CREATE INDEX', 'INSERT INTO']):
+        return 'SQL Generico', 'Script SQL detectado parcialmente'
+
+    return '', ''
 
 class DetectorBaseDatos:
     """Detecta automaticamente el tipo de base de datos a partir del contenido del archivo."""
@@ -28,24 +58,30 @@ class DetectorBaseDatos:
         except Exception:
             pass
 
-        # 2. Intentar leer como texto para detectar SQL dumps
+        # 2. Intentar leer bytes y extraer texto imprimible para detectar scripts SQL
         try:
-            with open(ruta, 'r', encoding='utf-8', errors='ignore') as f:
-                contenido = f.read(8000).upper()
+            with open(ruta, 'rb') as f:
+                cabecera = f.read(2 * 1024 * 1024)
 
-            if 'CREATE TABLE' in contenido:
-                if 'POSTGRES' in contenido or 'PG_' in contenido or 'SERIAL' in contenido:
-                    return 'PostgreSQL', 'Dump PostgreSQL detectado', None
-                elif 'AUTO_INCREMENT' in contenido or 'ENGINE=INNODB' in contenido or 'ENGINE=MYISAM' in contenido:
-                    return 'MySQL', 'Dump MySQL detectado', None
-                elif 'NVARCHAR' in contenido or 'IDENTITY(' in contenido or 'GO\n' in contenido:
-                    return 'Microsoft SQL Server', 'Dump SQL Server detectado', None
-                elif 'VARCHAR2' in contenido or 'NUMBER(' in contenido or 'TABLESPACE' in contenido:
-                    return 'Oracle', 'Dump Oracle detectado', None
-                else:
-                    return 'SQL Generico', 'Script SQL detectado', None
-        except Exception:
-            pass
+            texto_utf8 = cabecera.decode('utf-8', errors='ignore')
+            texto_ascii = _extraer_texto_imprimible(cabecera)
+            texto_muestra = f"{texto_utf8}\n{texto_ascii}"
+
+            tipo_sql, mensaje_sql = _detectar_sql_desde_texto(texto_muestra)
+            if tipo_sql:
+                return tipo_sql, mensaje_sql, None
+
+            if ext == '.bak':
+                # Un .bak real de SQL Server suele ser binario; no se puede tratar como script SQL.
+                no_texto = len(texto_ascii.strip()) < 100
+                tiene_nulos = b'\x00' in cabecera
+                if tiene_nulos or no_texto:
+                    return 'SQL Server Backup', (
+                        'El archivo .bak parece ser un backup binario de SQL Server. '
+                        'Debe restaurarse en SQL Server y luego exportarse como script .sql para migrarlo.'
+                    ), None
+        except Exception as e:
+            print(f'[DETECTOR] Error leyendo archivo para deteccion SQL: {str(e)}')
 
         # 3. Intentar JSON (MongoDB / Elasticsearch)
         try:

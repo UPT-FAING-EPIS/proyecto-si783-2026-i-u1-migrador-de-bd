@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, send_file
+from flask import Blueprint, render_template, request, jsonify, send_file, session, redirect, url_for
 from app import socketio
 import os
 from werkzeug.utils import secure_filename
@@ -6,6 +6,7 @@ from datetime import datetime
 import tempfile
 import zipfile
 import json
+import sqlite3
 
 import sys
 from pathlib import Path
@@ -15,8 +16,16 @@ from utilidades.detector import DetectorBaseDatos
 from extraccion.conector import ConectorOrigen
 from transformacion.mapeador import MapeadorDatos
 from carga.cargador import CargadorDestino
+from app.auth import (
+    inicializar_bd, verificar_usuario, registrar_usuario, requerir_login,
+    requerir_admin, obtener_usuario_actual, crear_nuevo_admin, DB_PATH,
+    registrar_usuario_oauth, verificar_codigo, enviar_email_notificacion
+)
 
 principal = Blueprint('principal', __name__)
+
+# Inicializar base de datos de autenticación
+inicializar_bd()
 
 # Corregir ruta de uploads
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -46,47 +55,335 @@ def _registrar_log(mensaje: str, tipo: str = 'info', ip: str = None):
 
 MAX_IPS = 1000  # limite para evitar crecimiento ilimitado de memoria
 
-def _registrar_ip(ip: str, actividad: str):
-    """Registra acceso de una IP (máximo MAX_IPS entradas)."""
-    if len(estado_app['ips']) >= MAX_IPS:
-        estado_app['ips'].pop(0)
-    estado_app['ips'].append({
-        'ip': ip,
-        'fecha': datetime.now().strftime('%Y-%m-%d'),
-        'hora': datetime.now().strftime('%H:%M:%S'),
-        'actividad': actividad,
-    })
+def _registrar_ip(ip: str, actividad: str, usuario: str = None):
+    """Registra acceso de una IP. Si ya existe, actualiza fecha/hora/actividad."""
+    ahora = datetime.now()
+    fecha = ahora.strftime('%Y-%m-%d')
+    hora = ahora.strftime('%H:%M:%S')
+    
+    # Buscar si esta IP ya existe
+    ip_existente = None
+    for entrada in estado_app['ips']:
+        if entrada['ip'] == ip:
+            ip_existente = entrada
+            break
+    
+    if ip_existente:
+        # Actualizar fecha, hora, actividad y usuario si cambia
+        ip_existente['fecha'] = fecha
+        ip_existente['hora'] = hora
+        ip_existente['actividad'] = actividad
+        ip_existente['usuario'] = usuario or ip_existente.get('usuario', 'anónimo')
+        ip_existente['accesos'] = ip_existente.get('accesos', 1) + 1
+    else:
+        # Nueva IP: agregar
+        if len(estado_app['ips']) >= MAX_IPS:
+            estado_app['ips'].pop(0)
+        estado_app['ips'].append({
+            'ip': ip,
+            'fecha': fecha,
+            'hora': hora,
+            'actividad': actividad,
+            'usuario': usuario or 'anónimo',
+            'accesos': 1
+        })
 
-@principal.before_app_request
-def _capturar_ip():
+def _registrar_actividad_ip(actividad_desc: str):
+    """Registra actividad real de una IP (no navegaciones)."""
     ip = request.remote_addr or 'desconocida'
-    ruta = request.path
-    # No registrar assets estáticos ni sockets
-    if not ruta.startswith('/static') and not ruta.startswith('/socket.io'):
-        _registrar_ip(ip, ruta)
+    usuario = session.get('usuario', 'anónimo')
+    _registrar_ip(ip, actividad_desc, usuario)
+
+# ==================== RUTAS DE AUTENTICACIÓN ====================
+
+@principal.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        usuario = request.form.get('usuario')
+        contraseña = request.form.get('contraseña')
+
+        usuario_data = verificar_usuario(usuario, contraseña)
+        if usuario_data:
+            session['usuario_id'] = usuario_data['id']
+            session['usuario'] = usuario_data['usuario']
+            session['rol'] = usuario_data['rol']
+            _registrar_log(f'Usuario {usuario} iniciado sesión', 'info', request.remote_addr)
+            return redirect(url_for('principal.migracion'))
+        else:
+            # Verificar si el usuario existe pero no está verificado
+            from app.auth import obtener_usuario_por_email
+            # Asumir que usuario podría ser email o nombre, pero para simplificar, buscar por usuario
+            # Para mejor UX, podríamos buscar por email también
+            return render_template('login.html', error='Usuario o contraseña incorrectos, o cuenta no verificada. Revisa tu email.')
+
+    return render_template('login.html')
+
+@principal.route('/registro', methods=['GET', 'POST'])
+def registro():
+    if request.method == 'POST':
+        usuario = request.form.get('usuario')
+        email = request.form.get('email')
+        contraseña = request.form.get('contraseña')
+        confirmar = request.form.get('confirmar')
+
+        if contraseña != confirmar:
+            return render_template('registro.html', error='Las contraseñas no coinciden')
+
+        if len(contraseña) < 6:
+            return render_template('registro.html', error='La contraseña debe tener mínimo 6 caracteres')
+
+        if len(usuario) < 3:
+            return render_template('registro.html', error='El usuario debe tener mínimo 3 caracteres')
+
+        exito, mensaje = registrar_usuario(usuario, email, contraseña)
+        if exito:
+            _registrar_log(f'Nuevo usuario registrado: {usuario}', 'info', request.remote_addr)
+            return render_template('verificar.html', email=email, mensaje=mensaje)
+        else:
+            return render_template('registro.html', error=mensaje)
+
+    return render_template('registro.html')
+
+@principal.route('/verificar', methods=['GET', 'POST'])
+def verificar():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        codigo = request.form.get('codigo')
+
+        exito, mensaje = verificar_codigo(email, codigo)
+        if exito:
+            _registrar_log(f'Usuario verificado: {email}', 'info', request.remote_addr)
+            return render_template('login.html', mensaje=mensaje + ' Ahora puedes iniciar sesión.')
+        else:
+            return render_template('verificar.html', email=email, error=mensaje)
+
+    email = request.args.get('email')
+    return render_template('verificar.html', email=email)
+
+@principal.route('/logout')
+def logout():
+    usuario = session.get('usuario', 'desconocido')
+    session.clear()
+    _registrar_log(f'Usuario {usuario} cerró sesión', 'info', request.remote_addr)
+    return redirect(url_for('principal.login'))
+
+# ==================== RUTAS OAUTH ====================
+
+@principal.route('/auth/<proveedor>')
+def oauth_login(proveedor):
+    """Inicia el flujo de login OAuth con Google o GitHub."""
+    if proveedor.lower() == 'google':
+        from app.oauth import oauth
+        redirect_uri = url_for('principal.oauth_callback', proveedor='google', _external=True)
+        return oauth.google.authorize_redirect(redirect_uri)
+    elif proveedor.lower() == 'github':
+        from app.oauth import oauth
+        redirect_uri = url_for('principal.oauth_callback', proveedor='github', _external=True)
+        return oauth.github.authorize_redirect(redirect_uri)
+    return redirect(url_for('principal.login'))
+
+@principal.route('/auth/<proveedor>/callback')
+def oauth_callback(proveedor):
+    """Callback de OAuth."""
+    try:
+        from app.oauth import oauth
+
+        if proveedor.lower() == 'google':
+            token = oauth.google.authorize_access_token()
+            usuario_info = token.get('userinfo')
+
+            if usuario_info:
+                usuario_data = registrar_usuario_oauth(
+                    proveedor='google',
+                    proveedor_id=usuario_info.get('sub'),
+                    email=usuario_info.get('email'),
+                    nombre=usuario_info.get('name'),
+                    foto_url=usuario_info.get('picture')
+                )
+
+                if usuario_data:
+                    session['usuario_id'] = usuario_data['id']
+                    session['usuario'] = usuario_data['usuario']
+                    session['rol'] = usuario_data['rol']
+                    _registrar_log(
+                        f'Usuario {usuario_data["usuario"]} inició sesión con Google',
+                        'info', request.remote_addr
+                    )
+                    return redirect(url_for('principal.migracion'))
+
+        elif proveedor.lower() == 'github':
+            token = oauth.github.authorize_access_token()
+
+            # Obtener información del usuario de GitHub
+            resp = oauth.github.get('user', token=token)
+            usuario_info = resp.json()
+
+            # Obtener email si no está en el perfil público
+            email = usuario_info.get('email')
+            if not email:
+                resp_email = oauth.github.get('user/emails', token=token)
+                emails = resp_email.json()
+                for e in emails:
+                    if e.get('primary'):
+                        email = e.get('email')
+                        break
+                if not email and emails:
+                    email = emails[0].get('email')
+
+            if email:
+                usuario_data = registrar_usuario_oauth(
+                    proveedor='github',
+                    proveedor_id=str(usuario_info.get('id')),
+                    email=email,
+                    nombre=usuario_info.get('name') or usuario_info.get('login'),
+                    foto_url=usuario_info.get('avatar_url')
+                )
+
+                if usuario_data:
+                    session['usuario_id'] = usuario_data['id']
+                    session['usuario'] = usuario_data['usuario']
+                    session['rol'] = usuario_data['rol']
+                    _registrar_log(
+                        f'Usuario {usuario_data["usuario"]} inició sesión con GitHub',
+                        'info', request.remote_addr
+                    )
+                    return redirect(url_for('principal.migracion'))
+            else:
+                return redirect(url_for('principal.login', error='No se pudo obtener el email de GitHub'))
+
+        return redirect(url_for('principal.login', error='Error en autenticación OAuth'))
+
+    except Exception as e:
+        _registrar_log(f'Error OAuth {proveedor}: {str(e)}', 'error', request.remote_addr)
+        return redirect(url_for('principal.login', error=f'Error: {str(e)}'))
+
+@principal.route('/admin', methods=['GET', 'POST'])
+@requerir_admin
+def admin():
+    usuario_actual = obtener_usuario_actual()
+    if not usuario_actual:
+        return redirect(url_for('principal.login'))
+
+    error_admin = None
+    exito_admin = None
+
+    if request.method == 'POST':
+        usuario_nuevo = request.form.get('usuario_nuevo')
+        email_nuevo = request.form.get('email_nuevo')
+
+        exito, mensaje = crear_nuevo_admin(usuario_actual['id'], usuario_nuevo, email_nuevo)
+        if exito:
+            exito_admin = mensaje
+        else:
+            error_admin = mensaje
+
+    # Obtener lista de usuarios
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute('SELECT id, usuario, email, rol, creado_en, verified FROM usuarios ORDER BY creado_en DESC')
+    usuarios = c.fetchall()
+    conn.close()
+
+    return render_template('admin.html',
+                           usuarios=usuarios,
+                           error_admin=error_admin,
+                           exito_admin=exito_admin)
+
+@principal.route('/admin/eliminar', methods=['POST'])
+@requerir_admin
+def eliminar_usuario():
+    usuario_actual = obtener_usuario_actual()
+    if not usuario_actual:
+        return redirect(url_for('principal.login'))
+
+    usuario_id = request.form.get('usuario_id')
+    if not usuario_id:
+        return redirect(url_for('principal.admin'))
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute('SELECT id, usuario, email, rol FROM usuarios WHERE id = ?', (usuario_id,))
+    usuario = c.fetchone()
+
+    if not usuario:
+        conn.close()
+        return redirect(url_for('principal.admin'))
+
+    if usuario['rol'] == 'admin':
+        conn.close()
+        return redirect(url_for('principal.admin'))
+
+    email = usuario['email']
+    nombre_usuario = usuario['usuario']
+
+    try:
+        c.execute('DELETE FROM usuarios WHERE id = ?', (usuario_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+    asunto = 'Cuenta eliminada en MigradorBD'
+    mensaje = (
+        f'Hola {nombre_usuario},\n\n'
+        'Tu cuenta ha sido eliminada por un administrador. Si crees que esto es un error, ponte en contacto con el equipo de soporte.\n\n'
+        'Saludos,\nEquipo MigradorBD'
+    )
+    exito_email, error_email = enviar_email_notificacion(email, asunto, mensaje)
+    _registrar_log(f'Usuario eliminado por admin: {nombre_usuario}', 'warning', request.remote_addr)
+
+    if not exito_email:
+        mensaje_exito = f'Usuario {nombre_usuario} eliminado. No se pudo notificar por email: {error_email}'
+    else:
+        mensaje_exito = f'Usuario {nombre_usuario} eliminado y notificado por email.'
+
+    # Recargar la lista de usuarios y mostrar mensaje de éxito
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute('SELECT id, usuario, email, rol, creado_en, verified FROM usuarios ORDER BY creado_en DESC')
+    usuarios = c.fetchall()
+    conn.close()
+
+    return render_template('admin.html',
+                           usuarios=usuarios,
+                           exito_admin=mensaje_exito)
+
+# ==================== RUTAS PROTEGIDAS ====================
 
 @principal.route('/')
 def index():
+    if 'usuario_id' in session:
+        return redirect(url_for('principal.migracion'))
     return render_template('index.html')
 
 @principal.route('/configuracion')
+@requerir_login
 def configuracion():
     from flask import redirect, url_for
     return redirect(url_for('principal.migracion'))
 
 @principal.route('/migracion')
+@requerir_login
 def migracion():
-    return render_template('migracion.html')
+    usuario_actual = obtener_usuario_actual()
+    return render_template('migracion.html', usuario=usuario_actual)
 
 @principal.route('/historial')
+@requerir_login
 def historial():
+    usuario_actual = obtener_usuario_actual()
     return render_template('historial.html',
                            historial=estado_app['historial'],
-                           logs=estado_app['logs'])
+                           logs=estado_app['logs'],
+                           usuario=usuario_actual)
 
 @principal.route('/monitoreo-ip')
+@requerir_admin
 def monitoreo_ip():
-    return render_template('monitoreo_ip.html', ips=estado_app['ips'])
+    usuario_actual = obtener_usuario_actual()
+    return render_template('monitoreo_ip.html', ips=estado_app['ips'], usuario=usuario_actual)
 
 # Ruta de compatibilidad: redirigir /reporte a /historial
 @principal.route('/reporte')
@@ -123,37 +420,80 @@ def _extension_para_motor(motor: str) -> str:
     return '.db'
 
 @principal.route('/api/subir-archivo', methods=['POST'])
+@requerir_login
 def api_subir_archivo():
+    _registrar_actividad_ip('Subir archivo')  # Registrar actividad real
+    # Validaciones básicas del archivo
     if 'archivo' not in request.files:
         return jsonify({'estado': 'error', 'mensaje': 'No se subio archivo'})
-    
+
     archivo = request.files['archivo']
     if archivo.filename == '':
         return jsonify({'estado': 'error', 'mensaje': 'Archivo vacio'})
-    
+
     nombre = secure_filename(archivo.filename)
     ruta = os.path.join(UPLOAD_FOLDER, nombre)
-    archivo.save(ruta)
-    
+
     ip = request.remote_addr or 'desconocida'
-    tipo, mensaje, _ = DetectorBaseDatos.detectar(ruta, nombre)
-    
+    try:
+        # Guardar archivo en disco (puede lanzar excepciones en algunos entornos)
+        archivo.save(ruta)
+    except Exception as e:
+        _registrar_log(f'Error al guardar "{nombre}": {str(e)}', 'error', ip)
+        return jsonify({'estado': 'error', 'mensaje': f'No se pudo guardar el archivo: {str(e)}'})
+
+    # Ejecutar la detección dentro de un bloque try/except para evitar 500s
+    try:
+        tipo, mensaje, _ = DetectorBaseDatos.detectar(ruta, nombre)
+    except Exception as e:
+        _registrar_log(f'Error detectando tipo para "{nombre}": {str(e)}', 'error', ip)
+        return jsonify({'estado': 'error', 'mensaje': 'Error detectando tipo de archivo'})
+
     if tipo == 'Desconocido':
         _registrar_log(f'Archivo rechazado "{nombre}": {mensaje}', 'error', ip)
         return jsonify({'estado': 'error', 'mensaje': mensaje})
-    
+
+    if tipo == 'SQL Server Backup':
+        _registrar_log(f'Archivo "{nombre}" identificado como backup binario: {mensaje}', 'error', ip)
+        return jsonify({'estado': 'error', 'mensaje': mensaje, 'tipo_detectado': tipo})
+
     try:
         origen = ConectorOrigen(ruta, tipo)
-        
+        objetos_detectados = (
+            len(getattr(origen, 'vistas', []))
+            + len(getattr(origen, 'triggers', []))
+            + len(getattr(origen, 'procedimientos', []))
+            + len(getattr(origen, 'funciones', []))
+            + len(getattr(origen, 'indices', []))
+        )
+
         if not origen.tablas:
+            if objetos_detectados > 0:
+                estado_app['origen'] = origen
+                _registrar_log(
+                    f'Archivo "{nombre}" sin tablas, pero con {objetos_detectados} objetos SQL detectados',
+                    'warning',
+                    ip,
+                )
+                return jsonify({
+                    'estado': 'exito',
+                    'tipo_detectado': tipo,
+                    'nombre_archivo': nombre,
+                    'tablas': [],
+                    'total_tablas': 0,
+                    'esquema': {},
+                    'objetos_detectados': objetos_detectados,
+                    'mensaje': 'Se detectaron objetos SQL pero no tablas en el archivo.'
+                })
+
             _registrar_log(f'Archivo "{nombre}" sin tablas detectadas', 'error', ip)
-            return jsonify({'estado': 'error', 'mensaje': 'No se encontraron tablas'})
-        
+            return jsonify({'estado': 'error', 'mensaje': 'No se encontraron tablas ni objetos SQL. Si el .bak es un backup binario, primero restaure y exporte a .sql.'})
+
         estado_app['origen'] = origen
         _registrar_log(
             f'Archivo cargado: "{nombre}" ({tipo}) - {len(origen.tablas)} tablas', 'info', ip
         )
-        
+
         return jsonify({
             'estado': 'exito',
             'tipo_detectado': tipo,
@@ -163,25 +503,46 @@ def api_subir_archivo():
             'esquema': _esquema_serializable(origen.esquema)
         })
     except Exception as e:
+        # Registrar y devolver siempre JSON (evitar páginas HTML o trazas)
         _registrar_log(f'Error al cargar "{nombre}": {str(e)}', 'error', ip)
-        return jsonify({'estado': 'error', 'mensaje': f'Error: {str(e)}'})
+        return jsonify({'estado': 'error', 'mensaje': f'Error procesando archivo: {str(e)}'})
 
 @principal.route('/api/configurar-destino', methods=['POST'])
+@requerir_login
 def api_configurar_destino():
+    _registrar_actividad_ip('Configurar destino')  # Registrar actividad real
     datos = request.json
     motor = datos.get('motor_destino', 'SQLite')
     ip = request.remote_addr or 'desconocida'
     
     try:
         destino = CargadorDestino(motor)
+        estado_app['destino'] = destino
         
         if estado_app['origen'] and estado_app['origen'].esquema:
             creadas = destino.crear_estructura(estado_app['origen'].esquema)
             _registrar_log(
                 f'Destino {motor} configurado: {creadas} tablas/estructuras creadas', 'info', ip
             )
+            # Pasar información de esquemas al destino
+            if hasattr(estado_app['origen'], 'tabla_a_esquema'):
+                destino.tabla_a_esquema = estado_app['origen'].tabla_a_esquema
         
-        estado_app['destino'] = destino
+            if estado_app['origen']:
+                # Crear esquemas primero (si es soportado)
+                if hasattr(estado_app['origen'], 'esquemas'):
+                    esquemas_creados = destino.crear_esquemas(estado_app['origen'].esquemas)
+                    _registrar_log(f'Esquemas creados: {esquemas_creados}', 'info', ip)
+            
+                # Luego crear tablas con sus esquemas
+                if estado_app['origen'].esquema:
+                    creadas = destino.crear_estructura(
+                        estado_app['origen'].esquema,
+                        tabla_a_esquema=destino.tabla_a_esquema
+                    )
+                    _registrar_log(
+                        f'Destino {motor} configurado: {creadas} tablas/estructuras creadas', 'info', ip
+                    )
         
         return jsonify({
             'estado': 'exito',
@@ -193,7 +554,9 @@ def api_configurar_destino():
         return jsonify({'estado': 'error', 'mensaje': str(e)})
 
 @principal.route('/api/iniciar-migracion', methods=['POST'])
+@requerir_login
 def api_iniciar_migracion():
+    _registrar_actividad_ip('Iniciar migración')  # Registrar actividad real
     if not estado_app['origen']:
         return jsonify({'estado': 'error', 'mensaje': 'Suba un archivo primero'})
     if not estado_app['destino']:
@@ -204,6 +567,7 @@ def api_iniciar_migracion():
     ip = request.remote_addr or 'desconocida'
     estado_app['proceso_activo'] = True
     estado_app['metricas'] = {'extraidos': 0, 'cargados': 0, 'errores': 0, 'tablas_ok': 0}
+    estado_app['_ip_migracion'] = ip  # Guardar IP para el background task
     
     _registrar_log('Iniciando migracion...', 'info', ip)
     
@@ -215,6 +579,9 @@ def ejecutar_migracion():
     destino = estado_app.get('destino')
     tablas = origen.tablas if origen else []
     total = len(tablas)
+    
+    # Guardar timestamp de inicio para calcular duración
+    estado_app['_fecha_inicio_migracion'] = datetime.now()
 
     _registrar_log(f'Migrando {total} tablas...')
 
@@ -268,19 +635,55 @@ def ejecutar_migracion():
                     'tabla': tabla,
                     'estado': f'ERROR en {tabla}: {str(e)}',
                     'metricas': estado_app['metricas']
-                }, broadcast=True)
+                }, skip_sid=None)
     finally:
         # Asegurar que siempre se marca como terminado y se notifica al cliente
         try:
             estado_app['proceso_activo'] = False
 
+            # Crear vistas, triggers, procedimientos y funciones
+            if origen and destino:
+                _registrar_log('Creando objetos de BD (vistas, triggers, procedimientos)...')
+                
+                # Crear vistas
+                if hasattr(origen, 'vistas') and origen.vistas:
+                    vistas_creadas = destino.crear_vistas(origen.vistas)
+                    _registrar_log(f'Vistas creadas: {vistas_creadas}')
+                
+                # Crear triggers
+                if hasattr(origen, 'triggers') and origen.triggers:
+                    triggers_creados = destino.crear_triggers(origen.triggers)
+                    _registrar_log(f'Triggers creados: {triggers_creados}')
+
+                # Crear indices
+                if hasattr(origen, 'indices') and origen.indices:
+                    indices_creados = destino.crear_indices(origen.indices)
+                    _registrar_log(f'Indices registrados: {indices_creados}')
+                
+                # Crear procedimientos
+                if hasattr(origen, 'procedimientos') and origen.procedimientos:
+                    procs_creados = destino.crear_procedimientos(origen.procedimientos)
+                    _registrar_log(f'Procedimientos procesados: {procs_creados}')
+                
+                # Crear funciones
+                if hasattr(origen, 'funciones') and origen.funciones:
+                    funcs_creadas = destino.crear_funciones(origen.funciones)
+                    _registrar_log(f'Funciones procesadas: {funcs_creadas}')
+
             if origen:
+                # Registrar en historial con más detalles
+                ahora = datetime.now()
                 estado_app['historial'].append({
-                    'fecha': datetime.now().isoformat(),
+                    'id': len(estado_app['historial']) + 1,
+                    'fecha': ahora.isoformat(),
+                    'timestamp': ahora.strftime('%Y-%m-%d %H:%M:%S'),
                     'metricas': estado_app['metricas'].copy(),
                     'motor_destino': destino.motor if destino else None,
                     'archivo_origen': os.path.basename(origen.ruta) if getattr(origen, 'ruta', None) else '',
                     'total_tablas': total,
+                    'ip': estado_app.get('_ip_migracion', 'desconocida'),
+                    'usuario': 'sistema',
+                    'duracion_segundos': (ahora - (estado_app.get('_fecha_inicio_migracion', ahora))).total_seconds()
                 })
 
             _registrar_log(
@@ -297,20 +700,24 @@ def ejecutar_migracion():
             }, skip_sid=None)
 
             socketio.emit('migracion_completada', estado_app['metricas'], skip_sid=None)
+            socketio.emit('limpiar_interfaz', {}, skip_sid=None)
         except Exception as e:
             _registrar_log(f'Error al finalizar migracion: {str(e)}', 'error')
 
 @principal.route('/api/descargar')
+@requerir_login
 def api_descargar():
     """Descarga adaptable según motor destino con formato específico de cada BD"""
+    _registrar_actividad_ip('Descargar migración')  # Registrar actividad real
     if not estado_app['destino']:
         return jsonify({'estado': 'error', 'mensaje': 'No hay migración. Ejecute una migracion primero.'})
     
     destino = estado_app['destino']
-    motor = destino.motor if destino else None
+    # Permite forzar formato con query param ?motor=..., por defecto usa el motor configurado
+    motor = request.args.get('motor') or (destino.motor if destino else None)
     
     try:
-        # Generar exportación en formato específico del motor
+        # Generar exportación en formato específico del motor solicitado
         resultado, ext, mimetype, es_binario = destino.generar_export(motor)
         
         if not resultado:
@@ -351,8 +758,10 @@ def api_descargar():
 
 
 @principal.route('/api/descargar-todo')
+@requerir_login
 def api_descargar_todo():
     """Crea un ZIP con la base de datos resultante y un reporte JSON, y lo devuelve."""
+    _registrar_actividad_ip('Descargar paquete completo')  # Registrar actividad real
     if estado_app['destino']:
         destino = estado_app['destino']
         ruta = destino.get_ruta_salida()
@@ -399,8 +808,10 @@ def api_descargar_todo():
     return jsonify({'estado': 'error', 'mensaje': 'No hay archivo para descargar. Ejecute una migracion primero.'})
 
 @principal.route('/api/descargar-sql')
+@requerir_login
 def api_descargar_sql():
     """Descarga el SQL dump de la migración realizada"""
+    _registrar_actividad_ip('Descargar SQL dump')  # Registrar actividad real
     if estado_app['destino']:
         destino = estado_app['destino']
         try:
@@ -425,7 +836,9 @@ def api_descargar_sql():
     return jsonify({'estado': 'error', 'mensaje': 'No hay migración completada. Ejecute una migracion primero.'})
 
 @principal.route('/api/pausar', methods=['POST'])
+@requerir_login
 def api_pausar():
+    _registrar_actividad_ip('Pausar migración')  # Registrar actividad real
     estado_app['proceso_activo'] = False
     ip = request.remote_addr or 'desconocida'
     _registrar_log('Migracion pausada', 'warning', ip)
@@ -433,8 +846,10 @@ def api_pausar():
 
 
 @principal.route('/api/crear-estructura', methods=['POST'])
+@requerir_login
 def api_crear_estructura():
     """Endpoint para crear la estructura en el destino desde la UI."""
+    _registrar_actividad_ip('Crear estructura')  # Registrar actividad real
     ip = request.remote_addr or 'desconocida'
     if not estado_app.get('destino'):
         _registrar_log('Intento de crear estructura sin destino configurado', 'error', ip)

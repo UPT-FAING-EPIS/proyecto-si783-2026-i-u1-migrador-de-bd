@@ -1,0 +1,282 @@
+{
+  "metadata": {
+    "generator": "MigradorBD",
+    "timestamp": "2026-05-07T14:07:31.298834",
+    "motor": "MongoDB"
+  },
+  "collections": {
+    "tbcargo": [
+      {
+        "idcargo": 1,
+        "nombre": "ADMINISTRADOR",
+        "estado": 1
+      },
+      {
+        "idcargo": 2,
+        "nombre": "VENDEDOR",
+        "estado": 1
+      },
+      {
+        "idcargo": 3,
+        "nombre": "ALMACENERO",
+        "estado": 1
+      }
+    ],
+    "tbcategoria": [
+      {
+        "idcategoria": 1,
+        "nombre": "Electrónicos",
+        "descripcion": "Productos electrónicos y tecnológicos",
+        "estado": 1,
+        "fecha_creacion": "2025-10-21 07:32:14"
+      },
+      {
+        "idcategoria": 2,
+        "nombre": "Ropa",
+        "descripcion": "Prendas de vestir para hombres, mujeres y niños",
+        "estado": 1,
+        "fecha_creacion": "2025-10-21 07:32:14"
+      },
+      {
+        "idcategoria": 3,
+        "nombre": "Hogar",
+        "descripcion": "Artículos para el hogar y decoración",
+        "estado": 1,
+        "fecha_creacion": "2025-10-21 07:32:14"
+      },
+      {
+        "idcategoria": 4,
+        "nombre": "Deportes",
+        "descripcion": "Equipos y artículos deportivos",
+        "estado": 1,
+        "fecha_creacion": "2025-10-21 07:32:14"
+      }
+    ],
+    "tbcliente": [
+      {
+        "idcliente": 1,
+        "dni": "11111111",
+        "nombre": "Alberto",
+        "apellido": "Mamani",
+        "email": "albertomamani@gmail.com",
+        "telefono": "963852741",
+        "direccion": "Av. Callao",
+        "clave": "cliente123",
+        "estado": 1,
+        "fecha_registro": "2025-10-19 17:51:29"
+      }
+    ],
+    "tbproducto": [
+      {
+        "idproducto": 1,
+        "codigo": "PROD001",
+        "nombre": "Laptop HP 15\"",
+        "descripcion": "Laptop HP 15.6 pulgadas, 8GB RAM, 256GB SSD",
+        "precio": 1200.0,
+        "stock": 10,
+        "idcategoria": 1,
+        "imagen": "laptop.jpg",
+        "estado": 1,
+        "fecha_creacion": "2025-10-21 07:32:14"
+      },
+      {
+        "idproducto": 2,
+        "codigo": "PROD002",
+        "nombre": "Smartphone Samsung",
+        "descripcion": "Smartphone Samsung Galaxy A54 128GB",
+        "precio": 450.0,
+        "stock": 25,
+        "idcategoria": 1,
+        "imagen": "smartphone.jpg",
+        "estado": 1,
+        "fecha_creacion": "2025-10-21 07:32:14"
+      },
+      {
+        "idproducto": 3,
+        "codigo": "PROD003",
+        "nombre": "Camiseta Nike",
+        "descripcion": "Camiseta deportiva Nike Dri-FIT",
+        "precio": 35.0,
+        "stock": 50,
+        "idcategoria": 2,
+        "imagen": "camiseta.jpg",
+        "estado": 1,
+        "fecha_creacion": "2025-10-21 07:32:14"
+      },
+      {
+        "idproducto": 4,
+        "codigo": "PROD004",
+        "nombre": "Zapatos Deportivos",
+        "descripcion": "Zapatos deportivos Adidas Running",
+        "precio": 85.0,
+        "stock": 30,
+        "idcategoria": 2,
+        "imagen": "zapatos.jpg",
+        "estado": 1,
+        "fecha_creacion": "2025-10-21 07:32:14"
+      },
+      {
+        "idproducto": 5,
+        "codigo": "PROD005",
+        "nombre": "Sofá 3 Plazas",
+        "descripcion": "Sofá moderno 3 plazas color gris",
+        "precio": 650.0,
+        "stock": 5,
+        "idcategoria": 3,
+        "imagen": "sofa.jpg",
+        "estado": 1,
+        "fecha_creacion": "2025-10-21 07:32:14"
+      },
+      {
+        "idproducto": 6,
+        "codigo": "PROD006",
+        "nombre": "Pelota de Fútbol",
+        "descripcion": "Pelota de fútbol profesional tamaño 5",
+        "precio": 25.0,
+        "stock": 40,
+        "idcategoria": 4,
+        "imagen": "pelota.jpg",
+        "estado": 1,
+        "fecha_creacion": "2025-10-21 07:32:14"
+      }
+    ],
+    "tbusuario": [
+      {
+        "idusuario": 1,
+        "dni": "12345678",
+        "nombre": "Juan",
+        "apellido": "Pérez",
+        "email": "juan@dbtienda.com",
+        "telefono": "987654321",
+        "direccion": "Av. Principal 123",
+        "usuario": "admin",
+        "clave": "admin123",
+        "idcargo": 1,
+        "estado": 1,
+        "fecha_registro": "2025-10-21 07:32:14"
+      },
+      {
+        "idusuario": 2,
+        "dni": "87654321",
+        "nombre": "María",
+        "apellido": "Gómez",
+        "email": "maria@dbtienda.com",
+        "telefono": "987654322",
+        "direccion": "Av. Secundaria 456",
+        "usuario": "vendedor",
+        "clave": "vendedor123",
+        "idcargo": 2,
+        "estado": 1,
+        "fecha_registro": "2025-10-21 07:32:14"
+      },
+      {
+        "idusuario": 3,
+        "dni": "11223344",
+        "nombre": "Carlos",
+        "apellido": "López",
+        "email": "carlos@dbtienda.com",
+        "telefono": "987654323",
+        "direccion": "Calle Los Olivos 789",
+        "usuario": "almacen",
+        "clave": "almacen123",
+        "idcargo": 3,
+        "estado": 1,
+        "fecha_registro": "2025-10-21 07:32:14"
+      }
+    ],
+    "Administrativo_Estudiantes": [
+      {
+        "DNI": "@DNI",
+        "Nombres": "@Nombres",
+        "Apellidos": "@Apellidos",
+        "FechaNacimiento": "@FechaNacimiento",
+        "Genero": "@Genero",
+        "Direccion": "@Direccion",
+        "Telefono": "@Telefono",
+        "Email": "@Email"
+      },
+      {
+        "DNI": "@DNI",
+        "Nombres": "@Nombres",
+        "Apellidos": "@Apellidos",
+        "FechaNacimiento": "@FechaNacimiento",
+        "Genero": "@Genero",
+        "Direccion": "@Direccion",
+        "Telefono": "@Telefono",
+        "Email": "@Email"
+      }
+    ],
+    "Administrativo_Matriculas": [
+      {
+        "IdEstudiante": "@IdEstudiante",
+        "IdGrupo": "@IdGrupo"
+      },
+      {
+        "IdEstudiante": "@IdEstudiante",
+        "IdGrupo": "@IdGrupo"
+      }
+    ],
+    "Academico_Calificaciones": [
+      {
+        "IdMatricula": "@IdMatricula",
+        "Nota": "@Nota"
+      },
+      {
+        "IdMatricula": "@IdMatricula",
+        "Nota": "@Nota"
+      }
+    ],
+    "Academico_Grupos": [
+      {
+        "IdMateria": "@IdMateria",
+        "NombreGrupo": "@NombreGrupo",
+        "Semestre": "@Semestre",
+        "Aula": "@Aula"
+      },
+      {
+        "IdMateria": "@IdMateria",
+        "NombreGrupo": "@NombreGrupo",
+        "Semestre": "@Semestre",
+        "Aula": "@Aula"
+      }
+    ]
+  },
+  "objects": {
+    "vistas": [],
+    "triggers": [],
+    "procedimientos": [
+      {
+        "sql": "CREATE PROCEDURE Administrativo.RegistrarEstudiante\n    @DNI CHAR(8),\n    @Nombres NVARCHAR(50),\n    @Apellidos NVARCHAR(50),\n    @FechaNacimiento DATE,\n    @Genero CHAR(1),\n    @Direccion NVARCHAR(100) = NULL,\n    @Telefono CHAR(9) = NULL,\n    @Email NVARCHAR(100) = NULL\nAS\nBEGIN\n    INSERT INTO Administrativo.Estudiantes (DNI, Nombres, Apellidos, FechaNacimiento, Genero, Direccion, Telefono, Email)\n    VALUES (@DNI, @Nombres, @Apellidos, @FechaNacimiento, @Genero, @Direccion, @Telefono, @Email);\n    \n    SELECT SCOPE_IDENTITY() AS IdEstudiante;\nEND;"
+      },
+      {
+        "sql": "CREATE PROCEDURE Administrativo.MatricularEstudiante\n    @IdEstudiante INT,\n    @IdGrupo INT\nAS\nBEGIN\n    INSERT INTO Administrativo.Matriculas (IdEstudiante, IdGrupo)\n    VALUES (@IdEstudiante, @IdGrupo);\n    \n    SELECT SCOPE_IDENTITY() AS IdMatricula;\nEND;"
+      },
+      {
+        "sql": "CREATE PROCEDURE Academico.RegistrarCalificacion\n    @IdMatricula INT,\n    @Nota DECIMAL(5,2)\nAS\nBEGIN\n    IF @Nota BETWEEN 0 AND 20\n    BEGIN\n        INSERT INTO Academico.Calificaciones (IdMatricula, Nota)\n        VALUES (@IdMatricula, @Nota);\n        \n        SELECT SCOPE_IDENTITY() AS IdCalificacion;\n    END\n    ELSE\n    BEGIN\n        RAISERROR('La nota debe estar entre 0 y 20', 16, 1);"
+      },
+      {
+        "sql": "CREATE PROCEDURE Academico.ObtenerPromedioEstudiante\n    @IdEstudiante INT\nAS\nBEGIN\n    SELECT \n        e.Nombres + ' ' + e.Apellidos AS Estudiante,\n        COUNT(c.IdCalificacion) AS TotalMaterias,\n        AVG(c.Nota) AS PromedioGeneral\n    FROM Administrativo.Estudiantes e\n    INNER JOIN Administrativo.Matriculas mat ON e.IdEstudiante = mat.IdEstudiante\n    INNER JOIN Academico.Calificaciones c ON mat.IdMatricula = c.IdMatricula\n    WHERE e.IdEstudiante = @IdEstudiante\n    GROUP BY e.Nombres, e.Apellidos;\nEND;"
+      },
+      {
+        "sql": "CREATE PROCEDURE Administrativo.ActualizarEstudiante\n    @IdEstudiante INT,\n    @Direccion NVARCHAR(100) = NULL,\n    @Telefono CHAR(9) = NULL,\n    @Email NVARCHAR(100) = NULL\nAS\nBEGIN\n    UPDATE Administrativo.Estudiantes\n    SET \n        Direccion = ISNULL(@Direccion, Direccion),\n        Telefono = ISNULL(@Telefono, Telefono),\n        Email = ISNULL(@Email, Email)\n    WHERE IdEstudiante = @IdEstudiante;\nEND;"
+      },
+      {
+        "sql": "CREATE PROCEDURE Academico.CrearGrupo\n    @IdMateria INT,\n    @NombreGrupo NVARCHAR(50),\n    @Semestre CHAR(6),\n    @Aula NVARCHAR(20) = NULL\nAS\nBEGIN\n    INSERT INTO Academico.Grupos (IdMateria, NombreGrupo, Semestre, Aula)\n    VALUES (@IdMateria, @NombreGrupo, @Semestre, @Aula);\n    \n    SELECT SCOPE_IDENTITY() AS IdGrupo;\nEND;"
+      },
+      {
+        "sql": "CREATE PROCEDURE Academico.ObtenerEstudiantesPorGrupo\n    @IdGrupo INT\nAS\nBEGIN\n    SELECT \n        e.IdEstudiante,\n        e.DNI,\n        e.Nombres + ' ' + e.Apellidos AS Estudiante,\n        e.Email,\n        e.Telefono,\n        mat.FechaMatricula\n    FROM Administrativo.Estudiantes e\n    INNER JOIN Administrativo.Matriculas mat ON e.IdEstudiante = mat.IdEstudiante\n    WHERE mat.IdGrupo = @IdGrupo\n    ORDER BY e.Apellidos, e.Nombres;\nEND;"
+      },
+      {
+        "sql": "CREATE PROCEDURE Academico.ObtenerCalificacionesPorGrupo\n    @IdGrupo INT\nAS\nBEGIN\n    SELECT \n        e.Nombres + ' ' + e.Apellidos AS Estudiante,\n        m.Nombre AS Materia,\n        g.NombreGrupo,\n        c.Nota,\n        c.FechaRegistro\n    FROM Academico.Calificaciones c\n    INNER JOIN Administrativo.Matriculas mat ON c.IdMatricula = mat.IdMatricula\n    INNER JOIN Administrativo.Estudiantes e ON mat.IdEstudiante = e.IdEstudiante\n    INNER JOIN Academico.Grupos g ON mat.IdGrupo = g.IdGrupo\n    INNER JOIN Academico.Materias m ON g.IdMateria = m.IdMateria\n    WHERE g.IdGrupo = @IdGrupo\n    ORDER BY e.Apellidos, e.Nombres;\nEND;"
+      },
+      {
+        "sql": "CREATE PROCEDURE Administrativo.DarBajaMatricula\n    @IdMatricula INT\nAS\nBEGIN\n    UPDATE Administrativo.Matriculas\n    SET Estado = 'Inactivo'\n    WHERE IdMatricula = @IdMatricula;\nEND;"
+      },
+      {
+        "sql": "CREATE PROCEDURE Administrativo.ObtenerReporteEstudiante\n    @IdEstudiante INT\nAS\nBEGIN\n    -- Informacin del estudiante\n    SELECT \n        DNI,\n        Nombres + ' ' + Apellidos AS NombreCompleto,\n        FechaNacimiento,\n        Genero,\n        Direccion,\n        Telefono,\n        Email\n    FROM Administrativo.Estudiantes\n    WHERE IdEstudiante = @IdEstudiante;\n    \n    -- Materias matriculadas\n    SELECT \n        m.Nombre AS Materia,\n        g.NombreGrupo,\n        g.Semestre,\n        g.Aula,\n        p.Nombres + ' ' + p.Apellidos AS Profesor,\n        mat.FechaMatricula,\n        mat.Estado\n    FROM Administrativo.Matriculas mat\n    INNER JOIN Academico.Grupos g ON mat.IdGrupo = g.IdGrupo\n    INNER JOIN Academico.Materias m ON g.IdMateria = m.IdMateria\n    INNER JOIN Academico.Profesores p ON m.IdProfesor = p.IdProfesor\n    WHERE mat.IdEstudiante = @IdEstudiante;\n    \n    -- Calificaciones\n    SELECT \n        m.Nombre AS Materia,\n        c.Nota,\n        c.FechaRegistro\n    FROM Academico.Calificaciones c\n    INNER JOIN Administrativo.Matriculas mat ON c.IdMatricula = mat.IdMatricula\n    INNER JOIN Academico.Grupos g ON mat.IdGrupo = g.IdGrupo\n    INNER JOIN Academico.Materias m ON g.IdMateria = m.IdMateria\n    WHERE mat.IdEstudiante = @IdEstudiante;\nEND;"
+      }
+    ],
+    "funciones": [],
+    "indices": []
+  }
+}

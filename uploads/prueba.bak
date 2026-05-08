@@ -1,0 +1,6 @@
+-- Archivo de prueba .bak
+CREATE TABLE prueba_bak (
+  id INTEGER PRIMARY KEY,
+  nombre TEXT
+);
+INSERT INTO prueba_bak (id, nombre) VALUES (1, 'uno'), (2, 'dos');

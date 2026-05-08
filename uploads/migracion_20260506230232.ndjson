@@ -1,0 +1,8 @@
+{"index": {"_index": "roles", "_id": 0}}
+{"nombre_rol": "Administrador"}
+{"index": {"_index": "roles", "_id": 1}}
+{"nombre_rol": "Asistente"}
+{"index": {"_index": "roles", "_id": 2}}
+{"nombre_rol": "Participante"}
+{"index": {"_index": "usuarios", "_id": 0}}
+{"usuario": "p_usuario", "contraseña": "p_contraseña", "id_rol": "p_id_rol"}

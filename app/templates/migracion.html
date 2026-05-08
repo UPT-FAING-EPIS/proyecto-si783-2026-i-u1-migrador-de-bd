@@ -10,11 +10,11 @@
     <div class="conexion-panel">
         <h3>PASO 1: Subir Base de Datos Origen</h3>
         <p style="color:#666; font-size:13px;">
-            Formatos soportados: .db, .sqlite, .sql, .dump, .json, .csv, .xlsx y cualquier archivo de base de datos compatible
+            Formatos soportados: .db, .sqlite, .sql, .dump, .bak, .json, .csv, .xlsx y cualquier archivo de base de datos compatible
         </p>
         
         <input type="file" id="archivo-input" 
-               onchange="subirArchivo()" style="display:none;">
+               onchange="subirArchivo()" accept=".db,.sqlite,.sql,.dump,.bak,.json,.csv,.xlsx" style="display:none;">
         
         <div class="zona-subida" id="zona-subida" onclick="document.getElementById('archivo-input').click()">
             <div style="font-size:40px;">[ Subir Archivo ]</div>
@@ -41,61 +41,84 @@
             <option value="Apache Cassandra">Apache Cassandra</option>
         </select>
         
-        <button onclick="configurarDestino()" style="margin-top:15px; padding:10px 20px; background:#4CAF50; color:white; border:none; border-radius:4px; cursor:pointer; width:100%;">
+        <button onclick="configurarDestino()" style="margin-top:15px; padding:10px 20px; background:#244a7c; color:white; border:none; border-radius:4px; cursor:pointer; width:100%;">
             Configurar Destino
         </button>
         <span id="destino-estado" style="display:block; margin-top:10px; font-weight:bold;"></span>
     </div>
 </div>
 
-<!-- PASO 3: MIGRACION -->
+<!-- PASO 3: MIGRACION CON PESTAÑAS -->
 <div style="background:white; padding:25px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-top:20px;">
-    <h3>PASO 3: Ejecutar Migracion</h3>
-    
-    <div class="metricas">
-        <div class="metrica exito">
-            <span id="stat-tablas">0</span>
-            <small>Tablas</small>
-        </div>
-        <div class="metrica info">
-            <span id="stat-extraidos">0</span>
-            <small>Extraidos</small>
-        </div>
-        <div class="metrica warning">
-            <span id="stat-cargados">0</span>
-            <small>Cargados</small>
-        </div>
-        <div class="metrica error">
-            <span id="stat-errores">0</span>
-            <small>Errores</small>
-        </div>
-    </div>
-    
-    <p id="tabla-actual" style="color:#666; margin:10px 0;">Listo para iniciar</p>
-    
-    <div style="background:#e0e0e0; height:25px; border-radius:12px; overflow:hidden; margin:10px 0;">
-        <div id="barra" style="width:0%; height:100%; background:#4CAF50; transition:width 0.3s;"></div>
-    </div>
-    <p id="porcentaje" style="font-size:28px; text-align:center; color:#1a73e8;">0%</p>
-    
-    <div style="margin:15px 0;">
-        <button onclick="iniciarMigracion()" id="btn-iniciar" style="padding:12px 30px; background:#4CAF50; color:white; border:none; border-radius:4px; font-size:16px; cursor:pointer; margin-right:10px;">
-            Iniciar Migracion
+    <!-- Tabs de navegación -->
+    <div style="display:flex; border-bottom:2px solid #e0e0e0; margin-bottom:20px;">
+        <button onclick="cambiarTab('migracion')" id="tab-migracion" 
+            style="padding:12px 20px; background:transparent; border:none; border-bottom:3px solid #244a7c; color:#244a7c; font-weight:bold; cursor:pointer; font-size:14px;">
+            Migración
         </button>
-        <button onclick="pausarMigracion()" style="padding:12px 30px; background:#FF9800; color:white; border:none; border-radius:4px; font-size:16px; cursor:pointer; margin-right:10px;">
-            Pausar
-        </button>
-        <button id="btn-crear" onclick="crearEstructura()" style="padding:12px 20px; background:#00796B; color:white; border:none; border-radius:4px; font-size:14px; margin-right:8px;">
-            Crear Tablas
-        </button>
-        <button onclick="descargar()" id="btn-descargar" style="padding:12px 30px; background:#2196F3; color:white; border:none; border-radius:4px; font-size:16px;">
-            Descargar
+        <button onclick="cambiarTab('historial')" id="tab-historial"
+            style="padding:12px 20px; background:transparent; border:none; border-bottom:3px solid transparent; color:#999; font-weight:bold; cursor:pointer; font-size:14px;">
+            Historial
         </button>
     </div>
     
-    <!-- LOGS -->
-    <div style="background:#1e1e1e; color:#d4d4d4; padding:10px; border-radius:4px; height:200px; overflow-y:auto; font-family:monospace; font-size:12px;" id="logs">
-        <div>Sistema listo...</div>
+    <!-- Tab: Migración -->
+    <div id="tab-content-migracion" style="display:block;">
+        <h3>PASO 3: Ejecutar Migracion</h3>
+        
+        <div class="metricas">
+            <div class="metrica exito">
+                <span id="stat-tablas">0</span>
+                <small>Tablas</small>
+            </div>
+            <div class="metrica info">
+                <span id="stat-extraidos">0</span>
+                <small>Extraidos</small>
+            </div>
+            <div class="metrica warning">
+                <span id="stat-cargados">0</span>
+                <small>Cargados</small>
+            </div>
+            <div class="metrica error">
+                <span id="stat-errores">0</span>
+                <small>Errores</small>
+            </div>
+        </div>
+        
+        <p id="tabla-actual" style="color:#666; margin:10px 0;">Listo para iniciar</p>
+        
+        <div style="background:#e0e0e0; height:25px; border-radius:12px; overflow:hidden; margin:10px 0;">
+            <div id="barra" style="width:0%; height:100%; background:#244a7c; transition:width 0.3s;"></div>
+        </div>
+        <p id="porcentaje" style="font-size:28px; text-align:center; color:#1a73e8;">0%</p>
+        
+        <div style="margin:15px 0;">
+            <button onclick="iniciarMigracion()" id="btn-iniciar" style="padding:12px 30px; background:#244a7c; color:white; border:none; border-radius:4px; font-size:16px; cursor:pointer; margin-right:10px;">
+                Iniciar Migracion
+            </button>
+            <button onclick="pausarMigracion()" style="padding:12px 30px; background:#5f6c7b; color:white; border:none; border-radius:4px; font-size:16px; cursor:pointer; margin-right:10px;">
+                Pausar
+            </button>
+            <button id="btn-crear" onclick="crearEstructura()" style="padding:12px 20px; background:#364a63; color:white; border:none; border-radius:4px; font-size:14px; margin-right:8px;">
+                Crear Tablas
+            </button>
+            <button onclick="descargar()" id="btn-descargar" style="padding:12px 30px; background:#244a7c; color:white; border:none; border-radius:4px; font-size:16px;">
+                Descargar
+            </button>
+        </div>
+        
+        <!-- LOGS -->
+        <div style="background:#1e1e1e; color:#d4d4d4; padding:10px; border-radius:4px; height:200px; overflow-y:auto; font-family:monospace; font-size:12px;" id="logs">
+            <div>Sistema listo...</div>
+        </div>
+    </div>
+    
+    <!-- Tab: Historial -->
+    <div id="tab-content-historial" style="display:none;">
+        <h3>Historial de Migraciones</h3>
+        <div id="historial-container" style="max-height:600px; overflow-y:auto;">
+            <p style="text-align:center; color:#999; padding:40px;">Cargando historial...</p>
+        </div>
     </div>
 </div>
 
@@ -121,7 +144,7 @@
     background: #f8f9fa;
 }
 .zona-subida:hover {
-    background: #e3f2fd;
+    background: #edf2f7;
 }
 .metricas {
     display: grid;
@@ -143,20 +166,21 @@
     color: #666;
     font-size: 11px;
 }
-.metrica.exito { background: #e8f5e9; }
-.metrica.exito span { color: #4CAF50; }
-.metrica.info { background: #e3f2fd; }
-.metrica.info span { color: #2196F3; }
-.metrica.warning { background: #fff3e0; }
-.metrica.warning span { color: #FF9800; }
-.metrica.error { background: #ffebee; }
-.metrica.error span { color: #f44336; }
+.metrica.exito { background: #edf2f7; }
+.metrica.exito span { color: #244a7c; }
+.metrica.info { background: #edf2f7; }
+.metrica.info span { color: #244a7c; }
+.metrica.warning { background: #edf2f7; }
+.metrica.warning span { color: #244a7c; }
+.metrica.error { background: #edf2f7; }
+.metrica.error span { color: #244a7c; }
 </style>
 
 <script>
 const socket = io();
 let migracionActiva = false;
 let intervaloEstado = null;
+let motorDestinoSeleccionado = '';
 socket.on('connect', () => socket.emit('conectar'));
 
 // Recuperar estado al cargar
@@ -168,11 +192,11 @@ window.onload = async function() {
         if (datos.estado === 'exito') {
             document.getElementById('info-origen').style.display = 'block';
             document.getElementById('info-origen').innerHTML = `
-                <p style="color:#4CAF50;">Archivo cargado: ${datos.tipo_detectado}</p>
+                <p style="color:#244a7c;">Archivo cargado: ${datos.tipo_detectado}</p>
                 <p>${datos.total_tablas} tablas detectadas</p>
             `;
             document.getElementById('zona-subida').innerHTML = `
-                <div style="padding:40px; color:#4CAF50;">
+                <div style="padding:40px; color:#244a7c;">
                     <div style="font-size:40px;">[ Listo ]</div>
                     <p>${datos.tipo_detectado} - ${datos.total_tablas} tablas</p>
                 </div>`;
@@ -180,7 +204,7 @@ window.onload = async function() {
             if (datos.motor_destino) {
                 document.getElementById('motor-destino').value = datos.motor_destino;
                 document.getElementById('destino-estado').textContent = 'Destino: ' + datos.motor_destino;
-                document.getElementById('destino-estado').style.color = 'green';
+                document.getElementById('destino-estado').style.color = '#244a7c';
             }
             
             if (datos.metricas && datos.metricas.tablas_ok > 0) {
@@ -204,7 +228,7 @@ socket.on('log', (datos) => {
     const hora = new Date().toLocaleTimeString();
     const item = document.createElement('div');
     item.textContent = '[' + hora + '] ' + datos.mensaje;
-    if (datos.tipo === 'error') item.style.color = '#f44336';
+            if (datos.tipo === 'error') item.style.color = '#244a7c';
     logs.appendChild(item);
     logs.scrollTop = logs.scrollHeight;
 });
@@ -228,6 +252,28 @@ socket.on('migracion_completada', (m) => {
         logs.appendChild(item);
         logs.scrollTop = logs.scrollHeight;
     }
+    // Recargar historial automáticamente
+    cargarHistorial();
+});
+
+socket.on('limpiar_interfaz', () => {
+    document.getElementById('barra').style.width = '0%';
+    document.getElementById('porcentaje').textContent = '0%';
+    document.getElementById('tabla-actual').textContent = 'Listo para iniciar';
+    document.getElementById('stat-tablas').textContent = '0';
+    document.getElementById('stat-extraidos').textContent = '0';
+    document.getElementById('stat-cargados').textContent = '0';
+    document.getElementById('stat-errores').textContent = '0';
+    document.getElementById('info-origen').style.display = 'none';
+    document.getElementById('info-origen').innerHTML = '';
+    document.getElementById('zona-subida').innerHTML = '<div style="font-size:40px;">[ Subir Archivo ]</div><p>Click para seleccionar</p>';
+    document.getElementById('archivo-input').value = '';
+    document.getElementById('motor-destino').value = '';
+    document.getElementById('destino-estado').textContent = 'Listo para una nueva migración';
+    document.getElementById('btn-iniciar').disabled = true;
+    document.getElementById('btn-pausar').disabled = true;
+    document.getElementById('btn-crear').disabled = true;
+    document.getElementById('btn-descargar').disabled = !motorDestinoSeleccionado;
 });
 
 socket.on('disconnect', () => {
@@ -240,7 +286,7 @@ socket.on('disconnect', () => {
     if (logs) {
         const item = document.createElement('div');
         item.textContent = '[conexion] Se perdió la conexión en tiempo real';
-        item.style.color = '#ff9800';
+        item.style.color = '#244a7c';
         logs.appendChild(item);
     }
 });
@@ -263,22 +309,30 @@ async function subirArchivo() {
     
     try {
         const resp = await fetch('/api/subir-archivo', { method: 'POST', body: formData });
-        const datos = await resp.json();
-        
-        if (datos.estado === 'exito') {
+        let datos = null;
+        try {
+            datos = await resp.json();
+        } catch (parseErr) {
+            const txt = await resp.text().catch(() => null);
+            alert('Error al subir archivo: ' + (txt || parseErr.message));
+            document.getElementById('zona-subida').innerHTML = '<div style="padding:40px; color:#244a7c;">[Error]</div>';
+            return;
+        }
+
+        if (datos && datos.estado === 'exito') {
             document.getElementById('info-origen').style.display = 'block';
             document.getElementById('info-origen').innerHTML = `
-                <p style="color:#4CAF50;">Archivo: ${datos.nombre_archivo}</p>
+                <p style="color:#244a7c;">Archivo: ${datos.nombre_archivo}</p>
                 <p>Tipo: ${datos.tipo_detectado}</p>
                 <p>Tablas: ${datos.total_tablas}</p>
             `;
             document.getElementById('zona-subida').innerHTML = `
-                <div style="padding:40px; color:#4CAF50;">
+                <div style="padding:40px; color:#244a7c;">
                     <div style="font-size:40px;">[ OK ]</div>
                     <p>${datos.tipo_detectado}</p>
                 </div>`;
-        } else {
-            alert(datos.mensaje);
+        } else if (datos) {
+            alert(datos.mensaje || 'Error desconocido');
         }
     } catch(e) {
         alert('Error: ' + e.message);
@@ -299,9 +353,14 @@ async function configurarDestino() {
             body: JSON.stringify({motor_destino: motor})
         });
         const datos = await resp.json();
+        if (datos.estado === 'exito') {
+            motorDestinoSeleccionado = motor;
+            document.getElementById('btn-crear').disabled = false;
+            document.getElementById('btn-descargar').disabled = false;
+        }
         
         document.getElementById('destino-estado').textContent = datos.mensaje;
-        document.getElementById('destino-estado').style.color = datos.estado === 'exito' ? 'green' : 'red';
+        document.getElementById('destino-estado').style.color = '#244a7c';
     } catch(e) {
         document.getElementById('destino-estado').textContent = 'Error';
     }
@@ -313,19 +372,19 @@ function actualizarBotonDescargar(motor) {
     
     if (/sqlite/i.test(motor)) {
         btn.textContent = 'Descargar';
-        btn.style.background = '#2196F3';
+        btn.style.background = '#244a7c';
     } else if (/mysql|postgre|sql server|oracle/i.test(motor)) {
         btn.textContent = 'Descargar';
-        btn.style.background = '#FF5722';
+        btn.style.background = '#244a7c';
     } else if (/mongo/i.test(motor)) {
         btn.textContent = 'Descargar';
-        btn.style.background = '#FFB300';
+        btn.style.background = '#244a7c';
     } else if (/redis|cassandra|elasticsearch/i.test(motor)) {
         btn.textContent = 'Descargar';
-        btn.style.background = '#9C27B0';
+        btn.style.background = '#244a7c';
     } else {
         btn.textContent = 'Descargar';
-        btn.style.background = '#757575';
+        btn.style.background = '#244a7c';
     }
 }
 
@@ -395,6 +454,8 @@ function iniciarSeguimientoEstado() {
                     logs.appendChild(item);
                     logs.scrollTop = logs.scrollHeight;
                 }
+                // Recargar historial automáticamente
+                cargarHistorial();
             }
         } catch (e) {
             // no bloquear la UI si el polling falla temporalmente
@@ -448,7 +509,7 @@ async function _downloadBlobResponse(resp, fallbackName) {
 }
 
 async function descargar() {
-    const motor = document.getElementById('motor-destino').value || '';
+    const motor = document.getElementById('motor-destino').value || motorDestinoSeleccionado || '';
     if (!motor) { alert('Seleccione un motor destino primero'); return; }
     
     document.getElementById('btn-descargar').disabled = true;
@@ -466,6 +527,84 @@ async function descargar() {
         await _downloadBlobResponse(resp, fallback);
     } finally {
         document.getElementById('btn-descargar').disabled = false;
+    }
+}
+
+// Funciones para gestionar pestañas
+function cambiarTab(tab) {
+    // Ocultar todas las pestañas
+    document.getElementById('tab-content-migracion').style.display = 'none';
+    document.getElementById('tab-content-historial').style.display = 'none';
+    
+    // Mostrar pestaña seleccionada
+    document.getElementById('tab-content-' + tab).style.display = 'block';
+    
+    // Actualizar estilos de botones
+    document.getElementById('tab-migracion').style.borderBottomColor = tab === 'migracion' ? '#244a7c' : 'transparent';
+    document.getElementById('tab-migracion').style.color = tab === 'migracion' ? '#244a7c' : '#6d7c92';
+    
+    document.getElementById('tab-historial').style.borderBottomColor = tab === 'historial' ? '#244a7c' : 'transparent';
+    document.getElementById('tab-historial').style.color = tab === 'historial' ? '#244a7c' : '#6d7c92';
+    
+    // Cargar historial cuando se abre la pestaña
+    if (tab === 'historial') {
+        cargarHistorial();
+    }
+}
+
+async function cargarHistorial() {
+    try {
+        const resp = await fetch('/api/historial');
+        const datos = await resp.json();
+        const container = document.getElementById('historial-container');
+        
+        if (!datos.historial || datos.historial.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#999; padding:40px;">No hay migraciones registradas todavía.</p>';
+            return;
+        }
+        
+        let html = '';
+        // Mostrar en orden inverso (más recientes primero)
+        datos.historial.slice().reverse().forEach((migracion, idx) => {
+            const fecha = new Date(migracion.timestamp).toLocaleString();
+            const duracion = migracion.duracion_segundos ? migracion.duracion_segundos.toFixed(2) : '—';
+            const estado = migracion.metricas.errores === 0 ? 
+                '<span style="color:#244a7c; font-weight:bold;">✓ ÉXITO</span>' : 
+                '<span style="color:#244a7c; font-weight:bold;">✗ CON ERRORES</span>';
+            
+            html += `
+            <div style="background:#edf2f7; border-radius:6px; padding:14px; margin-bottom:12px; border-left:4px solid #244a7c;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <strong>#${migracion.id} | ${migracion.archivo_origen} → ${migracion.motor_destino}</strong>
+                        <div style="font-size:12px; color:#888; margin-top:4px;">
+                            ${fecha} | ${migracion.ip} | Duración: ${duracion}s
+                        </div>
+                    </div>
+                    <div>${estado}</div>
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:10px;">
+                    <div style="background:white; padding:8px; border-radius:4px; text-align:center; font-size:12px;">
+                        <strong>${migracion.metricas.tablas_ok}</strong> tablas
+                    </div>
+                    <div style="background:white; padding:8px; border-radius:4px; text-align:center; font-size:12px;">
+                        <strong>${migracion.metricas.extraidos}</strong> extraídos
+                    </div>
+                    <div style="background:white; padding:8px; border-radius:4px; text-align:center; font-size:12px;">
+                        <strong>${migracion.metricas.cargados}</strong> cargados
+                    </div>
+                    <div style="background:white; padding:8px; border-radius:4px; text-align:center; font-size:12px;">
+                        <strong style="color:#244a7c;">${migracion.metricas.errores}</strong> errores
+                    </div>
+                </div>
+            </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    } catch (e) {
+        console.error('Error cargando historial:', e);
+        document.getElementById('historial-container').innerHTML = '<p style="color:#244a7c;">Error al cargar historial</p>';
     }
 }
 </script>

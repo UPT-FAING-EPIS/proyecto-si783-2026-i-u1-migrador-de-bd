@@ -5,7 +5,7 @@
 {% block contenido %}
 <h2>Monitoreo de Direcciones IP</h2>
 <p style="color:#666; margin-bottom:20px;">
-    Registro de todas las conexiones entrantes al sistema, con fecha, hora, IP y actividad asociada.
+    Registro de todas las conexiones entrantes al sistema, con fecha, hora, IP, usuario y actividad asociada.
 </p>
 
 <div style="background:white; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.08); overflow:hidden; margin-bottom:30px;">
@@ -37,9 +37,11 @@
             <tr style="background:#f5f5f5;">
                 <th style="padding:10px 14px; text-align:left; border-bottom:1px solid #e0e0e0;">#</th>
                 <th style="padding:10px 14px; text-align:left; border-bottom:1px solid #e0e0e0;">IP</th>
+                <th style="padding:10px 14px; text-align:left; border-bottom:1px solid #e0e0e0;">Usuario</th>
+                <th style="padding:10px 14px; text-align:center; border-bottom:1px solid #e0e0e0;">Accesos</th>
                 <th style="padding:10px 14px; text-align:left; border-bottom:1px solid #e0e0e0;">Fecha</th>
-                <th style="padding:10px 14px; text-align:left; border-bottom:1px solid #e0e0e0;">Hora</th>
-                <th style="padding:10px 14px; text-align:left; border-bottom:1px solid #e0e0e0;">Actividad (ruta)</th>
+                <th style="padding:10px 14px; text-align:left; border-bottom:1px solid #e0e0e0;">Hora (Última)</th>
+                <th style="padding:10px 14px; text-align:left; border-bottom:1px solid #e0e0e0;">Actividad</th>
             </tr>
         </thead>
         <tbody>
@@ -47,6 +49,10 @@
             <tr style="border-bottom:1px solid #f0f0f0;">
                 <td style="padding:8px 14px; color:#aaa;">{{ loop.index }}</td>
                 <td style="padding:8px 14px;"><code style="background:#f5f5f5; padding:2px 6px; border-radius:3px;">{{ entrada.ip }}</code></td>
+                <td style="padding:8px 14px;">{{ entrada.usuario or 'anónimo' }}</td>
+                <td style="padding:8px 14px; text-align:center;">
+                    <span style="background:#e3f2fd; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:bold;">{{ entrada.get('accesos', 1) }}</span>
+                </td>
                 <td style="padding:8px 14px; white-space:nowrap;">{{ entrada.fecha }}</td>
                 <td style="padding:8px 14px; white-space:nowrap;">{{ entrada.hora }}</td>
                 <td style="padding:8px 14px; color:#555;">{{ entrada.actividad }}</td>

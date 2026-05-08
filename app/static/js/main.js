@@ -178,3 +178,33 @@ socket.on('migracion_completada', (datos) => {
     document.getElementById('btn-pausar').disabled = true;
     alert('Migracion completada!');
 });
+
+socket.on('limpiar_interfaz', () => {
+    // Resetear barra de progreso
+    document.getElementById('barra-progreso').style.width = '0%';
+    document.getElementById('porcentaje').textContent = '0%';
+    document.getElementById('tabla-actual-nombre').textContent = 'Esperando...';
+    document.getElementById('barra-tabla').style.width = '0%';
+    
+    // Limpiar archivo cargado
+    document.getElementById('archivo-cargado').innerHTML = '';
+    document.getElementById('tablas-detectadas').style.display = 'none';
+    
+    // Resetear input de archivo
+    if (document.getElementById('archivo')) {
+        document.getElementById('archivo').value = '';
+    }
+    
+    // Resetear motor destino
+    document.getElementById('motor-destino').value = 'SQLite';
+    
+    // Resetear estadísticas
+    document.getElementById('stat-tablas-ok').textContent = '0';
+    document.getElementById('stat-extraidos').textContent = '0';
+    document.getElementById('stat-cargados').textContent = '0';
+    document.getElementById('stat-errores').textContent = '0';
+    
+    // Resetear botones
+    document.getElementById('btn-iniciar').disabled = true;
+    document.getElementById('btn-pausar').disabled = true;
+});
