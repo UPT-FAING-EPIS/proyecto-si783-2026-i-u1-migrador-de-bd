@@ -1,7 +1,9 @@
 from app import crear_app, socketio
 import os
 
+print("Starting run.py")
 app = crear_app()
+print("App created successfully")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
